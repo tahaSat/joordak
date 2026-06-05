@@ -1,0 +1,16 @@
+export const joordakColors = {
+    primary: '#a9bac9',
+    dark: '#8fa3b5',
+    accent: '#c95742',
+    foreground: '#c95742',
+    text: '#c95742',
+    border: '#c5d0db',
+    soft: '#eef2f6',
+    gradient: '#dce4ec',
+    coral: '#c95742',
+    coralDark: '#a84735',
+    heroOverlay: 'linear-gradient(120deg, rgba(169,186,201,0.45), rgba(169,186,201,0.25))',
+    heroTextShadow: '0 2px 12px rgba(255,255,255,0.85), 0 2px 24px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.4)',
+    heroButtonShadow: '0 4px 18px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18)',
+    placeholderGradient: 'linear-gradient(to bottom right, #eef2f6, white, #dce4ec)',
+} as const;

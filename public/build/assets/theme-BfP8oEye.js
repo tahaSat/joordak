@@ -1,0 +1,1 @@
+var e={primary:`#a9bac9`,dark:`#8fa3b5`,accent:`#c95742`,foreground:`#c95742`,text:`#c95742`,border:`#c5d0db`,soft:`#eef2f6`,gradient:`#dce4ec`,coral:`#c95742`,coralDark:`#a84735`,heroOverlay:`linear-gradient(120deg, rgba(169,186,201,0.85), rgba(169,186,201,0.55))`,placeholderGradient:`linear-gradient(to bottom right, #eef2f6, white, #dce4ec)`};export{e as t};
