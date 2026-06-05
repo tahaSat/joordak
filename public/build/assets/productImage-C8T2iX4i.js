@@ -1,1 +1,0 @@
-var e=`aspect-[3/2]`;export{e as t};
