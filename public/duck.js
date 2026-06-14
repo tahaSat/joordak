@@ -13,6 +13,7 @@
     const DUCK_BEAK_DARK = '#a84735';
     const DUCK_EYE = '#222222';
     const DUCK_WING = '#E8AD38';
+    const DUCK_SCRATCH = '#6B4C3B';
 
     function getFrameMeta(index) {
         const map = {
@@ -48,6 +49,8 @@
             29: { dir: 'down', pose: 'yawn' },
             30: { dir: 'down', pose: 'sleep' },
             31: { dir: 'down', pose: 'sleep', phase: 1 },
+            32: { dir: 'down', pose: 'eat', phase: 0 },
+            33: { dir: 'down', pose: 'eat', phase: 1 },
         };
         return map[index] || { dir: 'down', pose: 'idle' };
     }
@@ -56,146 +59,441 @@
         return dir === 'left' || dir === 'up-left' || dir === 'down-left';
     }
 
+    // Side-profile layout: head up, feet down, beak points +x. Never rotate the whole duck.
+    const DUCK = {
+        headX: 0,
+        headY: -6,
+        headR: 10,
+        bodyX: 0,
+        bodyY: 6,
+        bodyRx: 14,
+        bodyRy: 10,
+        wingX: -5,
+        wingY: 4,
+        eyeX: 4,
+        eyeY: -8,
+        feetY: 15,
+    };
+
+    function drawDuckBody(ctx, opts = {}) {
+        ctx.fillStyle = opts.dark ? DUCK_BODY_DARK : DUCK_BODY;
+        ctx.beginPath();
+        ctx.ellipse(
+            opts.bodyX ?? DUCK.bodyX,
+            opts.bodyY ?? DUCK.bodyY,
+            opts.bodyRx ?? DUCK.bodyRx,
+            opts.bodyRy ?? DUCK.bodyRy,
+            opts.bodyTilt ?? 0,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    function drawDuckWing(ctx, opts = {}) {
+        ctx.fillStyle = opts.color ?? DUCK_WING;
+        ctx.beginPath();
+        ctx.ellipse(
+            opts.x ?? DUCK.wingX,
+            opts.y ?? DUCK.wingY,
+            opts.rx ?? 7,
+            opts.ry ?? 5,
+            opts.angle ?? -0.3,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    function drawDuckHead(ctx, opts = {}) {
+        ctx.fillStyle = DUCK_BODY;
+        ctx.beginPath();
+        ctx.arc(
+            opts.x ?? DUCK.headX,
+            opts.y ?? DUCK.headY,
+            opts.radius ?? DUCK.headR,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    function drawDuckBeak(ctx, opts = {}) {
+        const hx = opts.headX ?? DUCK.headX;
+        const hy = opts.headY ?? DUCK.headY;
+        const open = opts.open ?? 0;
+        const tilt = opts.tilt ?? 0;
+        const base = 6;
+        const tip = 16;
+
+        ctx.save();
+        ctx.translate(hx, hy);
+        ctx.rotate(tilt);
+
+        if (open <= 0) {
+            // Logo-style bill: short, tapered, slight scoop + upturned tip
+            ctx.fillStyle = DUCK_BEAK;
+            ctx.beginPath();
+            ctx.moveTo(base, 0);
+            ctx.bezierCurveTo(8, -2.6, 11, -2.4, tip - 0.5, -0.9);
+            ctx.quadraticCurveTo(tip + 1, 0.4, tip - 0.8, 1.4);
+            ctx.bezierCurveTo(11, 2.4, 8, 2.2, base, 0);
+            ctx.fill();
+            ctx.strokeStyle = DUCK_BEAK_DARK;
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(base + 1, 1);
+            ctx.quadraticCurveTo(10.5, 1.9, tip - 1.5, 1.5);
+            ctx.stroke();
+        } else {
+            const jawDrop = open * 0.22;
+            const seam = 0.35;
+
+            // Upper bill half
+            ctx.fillStyle = DUCK_BEAK;
+            ctx.beginPath();
+            ctx.moveTo(base, 0);
+            ctx.bezierCurveTo(8, -2.6, 11, -2.4, tip - 0.5, -0.9);
+            ctx.quadraticCurveTo(tip - 2, -0.2, 11, seam);
+            ctx.quadraticCurveTo(9, seam + 0.1, base, seam);
+            ctx.closePath();
+            ctx.fill();
+
+            // Mouth slit
+            ctx.fillStyle = '#D85848';
+            ctx.beginPath();
+            ctx.moveTo(base + 1, seam);
+            ctx.quadraticCurveTo(10, seam + 0.15 + jawDrop * 4, tip - 3, 0.6 + jawDrop * 5);
+            ctx.quadraticCurveTo(9, seam + 0.5 + jawDrop * 2, base + 1, seam + 0.4);
+            ctx.closePath();
+            ctx.fill();
+
+            // Lower bill half — hinges at base
+            ctx.save();
+            ctx.translate(base, seam);
+            ctx.rotate(jawDrop);
+            ctx.translate(-base, -seam);
+            ctx.fillStyle = DUCK_BEAK;
+            ctx.beginPath();
+            ctx.moveTo(base, seam);
+            ctx.quadraticCurveTo(11, seam, tip - 0.8, 1.4);
+            ctx.bezierCurveTo(11, 2.4, 8, 2.2, base, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = DUCK_BEAK_DARK;
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(base + 1, seam + 0.6);
+            ctx.quadraticCurveTo(10.5, 2.1, tip - 1.5, 1.7);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        ctx.restore();
+    }
+
+    function drawDuckEye(ctx, opts = {}) {
+        const x = opts.x ?? DUCK.eyeX;
+        const y = opts.y ?? DUCK.eyeY;
+        const open = opts.open ?? 1;
+
+        if (open <= 0.15) {
+            ctx.strokeStyle = DUCK_EYE;
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x - 2.5, y);
+            ctx.lineTo(x + 2.5, y);
+            ctx.stroke();
+            return;
+        }
+
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = DUCK_EYE;
+        ctx.beginPath();
+        ctx.arc(x + 1, y + (1 - open), 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function drawDuckFeet(ctx, opts = {}) {
+        const y = opts.y ?? DUCK.feetY;
+        const leftX = opts.leftX ?? -6;
+        const rightX = opts.rightX ?? 2;
+        ctx.fillStyle = DUCK_BEAK;
+        ctx.fillRect(leftX, y, 5, 3);
+        ctx.fillRect(rightX, y, 5, 3);
+    }
+
+    function drawDuckProfile(ctx, opts = {}) {
+        const headX = opts.headX ?? DUCK.headX;
+        const headY = opts.headY ?? DUCK.headY;
+        const eyeX = headX + (opts.eyeOffsetX ?? 4);
+        const eyeY = headY + (opts.eyeOffsetY ?? -2);
+
+        drawDuckBody(ctx, opts);
+        if (opts.backWing) {
+            drawDuckWing(ctx, opts.backWing);
+        } else if (!opts.hideBackWing) {
+            drawDuckWing(ctx, opts.wing);
+        }
+
+        if (opts.feet !== false) {
+            drawDuckFeet(ctx, opts.feetOpts || {});
+        }
+
+        drawDuckHead(ctx, { x: headX, y: headY, radius: opts.headR ?? DUCK.headR });
+        drawDuckBeak(ctx, {
+            headX,
+            headY,
+            open: opts.beakOpen ?? 0,
+            tilt: opts.beakTilt ?? 0,
+        });
+        drawDuckEye(ctx, { x: eyeX, y: eyeY, open: opts.eyeOpen ?? 1 });
+
+        if (opts.frontWing) {
+            drawDuckWing(ctx, opts.frontWing);
+        }
+    }
+
+    function drawSleepZzz(ctx, phase) {
+        ctx.fillStyle = 'rgba(90, 130, 180, 0.55)';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillText('z', 10, -17 - (phase === 1 ? 2 : 0));
+        if (phase === 1) {
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('Z', 16, -21);
+        }
+    }
+
+    function drawGroundSeeds(ctx, phase) {
+        ctx.fillStyle = '#C9A227';
+        const seeds =
+            phase === 0
+                ? [[10, 18], [15, 19], [19, 18], [13, 20]]
+                : [[12, 18], [18, 19]];
+        seeds.forEach(([x, y]) => {
+            ctx.beginPath();
+            ctx.ellipse(x, y, 2, 1.2, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    function drawWashSplash(ctx) {
+        ctx.strokeStyle = '#6BB8D6';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        [[16, -16, 18, -20], [12, -14, 10, -18], [18, -12, 21, -15]].forEach(([x1, y1, x2, y2]) => {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        });
+    }
+
+    function drawScratchLines(ctx, phase) {
+        ctx.strokeStyle = DUCK_SCRATCH;
+        ctx.lineWidth = 1;
+        ctx.lineCap = 'round';
+        const y = phase === 0 ? -10 : -11;
+        ctx.beginPath();
+        ctx.moveTo(-9, y);
+        ctx.lineTo(-11, y - 3);
+        ctx.stroke();
+    }
+
+    function drawClawFeet(ctx, dir, phase) {
+        const kick = phase === 0 ? 0 : 3;
+        ctx.fillStyle = DUCK_BEAK;
+        if (dir === 'up' || dir === 'down') {
+            drawDuckFeet(ctx, { y: 16, leftX: -5 + kick, rightX: 1 - kick });
+            return;
+        }
+        ctx.fillRect(-6, 16, 5, 3);
+        ctx.fillRect(7 + kick, 16, 5, 3);
+    }
+
     function drawDuckFrame(ctx, index) {
         const size = SPRITE_CANVAS_SIZE;
         const meta = getFrameMeta(index);
         const phase = meta.phase || 0;
-        const bounce = meta.pose === 'walk' ? (phase === 0 ? -1 : 1) : 0;
-        const flip = shouldFlipHorizontal(meta.dir);
+        const bounce = meta.pose === 'walk' ? (phase === 0 ? -2 : 2) : 0;
+        const flip = (meta.pose === 'walk' || meta.pose === 'claw') && shouldFlipHorizontal(meta.dir);
 
         ctx.clearRect(0, 0, size, size);
         ctx.save();
         ctx.translate(size / 2, size / 2 + bounce);
+        ctx.scale(0.95, 0.95);
         if (flip) {
-            ctx.scale(-0.95, 0.95);
-        } else {
-            ctx.scale(0.95, 0.95);
+            ctx.scale(-1, 1);
         }
 
-        if (meta.pose === 'sleep') {
-            ctx.globalAlpha = 0.85;
-            ctx.fillStyle = DUCK_BODY_DARK;
-            ctx.beginPath();
-            ctx.ellipse(0, 4, 16, 11, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = DUCK_BODY;
-            ctx.beginPath();
-            ctx.arc(-4, -2, 9, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = DUCK_EYE;
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(-8, -4);
-            ctx.lineTo(-2, -4);
-            ctx.moveTo(-6, -2);
-            ctx.lineTo(-4, -2);
-            ctx.stroke();
-            ctx.fillStyle = 'rgba(120,120,120,0.35)';
-            ctx.font = 'bold 10px sans-serif';
-            ctx.fillText('z', 10, -10);
-            ctx.restore();
-            return;
-        }
+        switch (meta.pose) {
+            case 'sleep': {
+                const droop = phase === 0 ? 0 : 1;
+                drawDuckProfile(ctx, {
+                    headY: -5 + droop * 0.5,
+                    headX: -0.5,
+                    beakTilt: 0.1,
+                    eyeOpen: 0,
+                    eyeOffsetX: 3.5,
+                    eyeOffsetY: -1.5,
+                    bodyY: 6.5 + droop * 0.5,
+                    wing: { x: -5, y: 4, angle: -0.25 },
+                    feetOpts: { y: 15, leftX: -6, rightX: 2 },
+                });
+                drawSleepZzz(ctx, phase);
+                break;
+            }
 
-        if (meta.pose === 'yawn') {
-            ctx.fillStyle = DUCK_BODY;
-            ctx.beginPath();
-            ctx.ellipse(0, 5, 15, 10, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(0, -4, 10, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#FF7F6A';
-            ctx.beginPath();
-            ctx.ellipse(10, -2, 5, 4, 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = DUCK_EYE;
-            ctx.beginPath();
-            ctx.arc(3, -6, 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-            return;
-        }
+            case 'yawn': {
+                drawDuckProfile(ctx, {
+                    headY: -6,
+                    beakOpen: 0.55,
+                    beakTilt: -0.12,
+                    eyeOpen: 0.1,
+                    eyeOffsetY: -2,
+                    wing: { x: -5, y: 4, angle: -0.35 },
+                    feetOpts: { y: 15, leftX: -6, rightX: 2 },
+                });
+                break;
+            }
 
-        // Body
-        ctx.fillStyle = DUCK_BODY;
-        ctx.beginPath();
-        ctx.ellipse(0, 6, 14, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
+            case 'eat': {
+                const pecking = phase === 0;
+                drawGroundSeeds(ctx, phase);
+                drawDuckProfile(ctx, {
+                    headY: pecking ? -2 : -5,
+                    headX: pecking ? 4 : 2,
+                    headR: 9,
+                    bodyY: 8,
+                    bodyRy: 9,
+                    bodyTilt: pecking ? 0.12 : 0.04,
+                    beakTilt: pecking ? 0.45 : 0.15,
+                    beakOpen: pecking ? 0.25 : 0,
+                    eyeOpen: pecking ? 0.8 : 1,
+                    eyeOffsetX: pecking ? 2.5 : 3.5,
+                    eyeOffsetY: pecking ? -1 : -2,
+                    wing: { x: -5, y: 5, angle: -0.1 },
+                    feetOpts: { y: 15, leftX: -6, rightX: 2 },
+                });
+                break;
+            }
 
-        // Wing
-        ctx.fillStyle = DUCK_WING;
-        ctx.beginPath();
-        ctx.ellipse(-5, 4, 7, 5, -0.3, 0, Math.PI * 2);
-        ctx.fill();
+            case 'wash': {
+                drawDuckProfile(ctx, {
+                    hideBackWing: true,
+                    backWing: { x: -6, y: 5, angle: 0.1, rx: 7, ry: 5 },
+                    frontWing: {
+                        x: 0,
+                        y: 1,
+                        angle: phase === 0 ? -1.0 : -1.4,
+                        rx: 6,
+                        ry: 4,
+                    },
+                    eyeOpen: 0.75,
+                    feetOpts: { y: 15 },
+                });
+                drawWashSplash(ctx);
+                break;
+            }
 
-        // Head
-        ctx.fillStyle = DUCK_BODY;
-        ctx.beginPath();
-        ctx.arc(0, -6, 10, 0, Math.PI * 2);
-        ctx.fill();
+            case 'scratch': {
+                const lift = phase === 0 ? -0.55 : -0.95;
+                drawDuckProfile(ctx, {
+                    hideBackWing: true,
+                    backWing: { x: -6, y: 5, angle: 0.1 },
+                    headX: phase === 0 ? 0 : -1,
+                    headY: -6,
+                    beakTilt: phase === 0 ? 0 : -0.08,
+                    frontWing: {
+                        x: -4,
+                        y: 1,
+                        angle: lift,
+                        rx: 6,
+                        ry: 3,
+                    },
+                    eyeOpen: phase === 0 ? 1 : 0.5,
+                    feet: false,
+                });
+                drawDuckFeet(ctx, {
+                    y: 15,
+                    leftX: phase === 0 ? -6 : -5,
+                    rightX: phase === 0 ? 2 : 3,
+                });
+                if (phase === 1) {
+                    drawScratchLines(ctx, phase);
+                }
+                break;
+            }
 
-        // Beak
-        ctx.fillStyle = DUCK_BEAK;
-        ctx.beginPath();
-        ctx.moveTo(8, -6);
-        ctx.lineTo(18, -4);
-        ctx.lineTo(8, -2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = DUCK_BEAK_DARK;
-        ctx.beginPath();
-        ctx.moveTo(8, -5);
-        ctx.lineTo(14, -4);
-        ctx.lineTo(8, -3);
-        ctx.closePath();
-        ctx.fill();
+            case 'stop':
+            case 'idle': {
+                drawDuckProfile(ctx, {
+                    feetOpts: {
+                        y: 15,
+                        leftX: meta.pose === 'stop' ? -5 : -6,
+                        rightX: meta.pose === 'stop' ? 3 : 2,
+                    },
+                    eyeOpen: meta.pose === 'stop' ? 0.8 : 1,
+                });
+                break;
+            }
 
-        // Eye
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(4, -8, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = DUCK_EYE;
-        ctx.beginPath();
-        ctx.arc(5, -8, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+            case 'claw': {
+                if (meta.dir === 'up') {
+                    drawDuckProfile(ctx, {
+                        headY: -8,
+                        beakTilt: -0.25,
+                        bodyY: 7,
+                        wing: { x: -4, y: 3, angle: -0.5 },
+                        frontWing: {
+                            x: 1,
+                            y: 2,
+                            angle: -1.35,
+                            rx: 4,
+                            ry: 3,
+                        },
+                        feet: false,
+                    });
+                    drawClawFeet(ctx, meta.dir, phase);
+                } else if (meta.dir === 'down') {
+                    drawDuckProfile(ctx, {
+                        headY: -4,
+                        headR: 9,
+                        beakTilt: 0.25,
+                        bodyY: 8,
+                        bodyRy: 9,
+                        wing: { x: -5, y: 5, angle: 0.1 },
+                        feet: false,
+                    });
+                    drawClawFeet(ctx, meta.dir, phase);
+                } else {
+                    drawDuckProfile(ctx, {
+                        wing: { x: -4, y: 3, angle: -0.4 },
+                        feet: false,
+                    });
+                    drawClawFeet(ctx, meta.dir, phase);
+                }
+                break;
+            }
 
-        // Feet (walk animation)
-        if (meta.pose === 'walk' || meta.pose === 'claw') {
-            ctx.fillStyle = DUCK_BEAK;
-            const footOffset = phase === 0 ? 3 : -3;
-            ctx.fillRect(-6 + footOffset, 14, 5, 3);
-            ctx.fillRect(2 - footOffset, 14, 5, 3);
-        }
-
-        if (meta.pose === 'wash') {
-            ctx.strokeStyle = '#7EC8E3';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(12, -10, 4, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-
-        if (meta.pose === 'scratch') {
-            ctx.strokeStyle = DUCK_BEAK_DARK;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(-12, -8);
-            ctx.lineTo(-18, -14);
-            ctx.moveTo(-10, -6);
-            ctx.lineTo(-16, -10);
-            ctx.stroke();
-        }
-
-        if (meta.pose === 'claw') {
-            ctx.strokeStyle = DUCK_BEAK_DARK;
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 3; i++) {
-                ctx.beginPath();
-                ctx.moveTo(14 + i * 2, -2 + i);
-                ctx.lineTo(20 + i * 2, -6 + i * 2);
-                ctx.stroke();
+            case 'walk':
+            default: {
+                const step = phase === 0 ? 1 : -1;
+                drawDuckProfile(ctx, {
+                    bodyY: 6 + step * 0.5,
+                    feetOpts: {
+                        y: 15,
+                        leftX: -6 + (phase === 0 ? 3 : -3),
+                        rightX: 2 + (phase === 0 ? -3 : 3),
+                    },
+                });
+                break;
             }
         }
 
@@ -204,7 +502,7 @@
 
     function buildDuckSprites() {
         const sprites = [];
-        for (let i = 0; i < 32; i++) {
+        for (let i = 0; i < 34; i++) {
             const canvas = document.createElement('canvas');
             canvas.width = SPRITE_CANVAS_SIZE;
             canvas.height = SPRITE_CANVAS_SIZE;
@@ -246,6 +544,7 @@
     D_CLAW: 15, // Clawing downward (at bottom boundary)
     L_CLAW: 16, // Clawing left (at left boundary)
     R_CLAW: 17, // Clawing right (at right boundary)
+    EAT: 18, // Pecking seeds on the ground
   };
 
   // Behavior modes (matching original Action enum)
@@ -259,6 +558,7 @@
 
   // Animation timing constants (in frames)
   const STOP_TIME = 4;
+  const EAT_TIME = 8;
   const WASH_TIME = 10;
   const SCRATCH_TIME = 4;
   const YAWN_TIME = 3;
@@ -343,6 +643,7 @@
         [23, 24], // D_CLAW: m_nAnimation[D_CLAW][0]=23, [1]=24
         [21, 22], // L_CLAW: m_nAnimation[L_CLAW][0]=21, [1]=22
         [19, 20], // R_CLAW: m_nAnimation[R_CLAW][0]=19, [1]=20
+        [32, 33], // EAT: pecking seeds on the ground
       ];
 
       // Additional state for behaviors
@@ -943,8 +1244,16 @@
             } else if (this.moveDY > 0 && this.logicY >= this.boundsHeight) {
               this.setState(NekoState.D_CLAW);
             } else {
-              this.setState(NekoState.WASH);
+              this.setState(NekoState.EAT);
             }
+          }
+          break;
+
+        case NekoState.EAT:
+          if (moveStart) {
+            this.setState(NekoState.AWAKE);
+          } else if (this.stateCount >= EAT_TIME) {
+            this.setState(NekoState.WASH);
           }
           break;
 
@@ -1085,6 +1394,7 @@
     isIdle() {
       return (
         this.state === NekoState.STOP ||
+        this.state === NekoState.EAT ||
         this.state === NekoState.WASH ||
         this.state === NekoState.SCRATCH ||
         this.state === NekoState.YAWN ||
