@@ -8,12 +8,12 @@
     "require": {
         "php": "^8.3",
         "aws/aws-sdk-php": "^3.384",
-        "filament/filament": "^4.0",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "*",
+        "mpdf/mpdf": "^8.3",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
@@ -56,8 +56,7 @@
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi",
-            "@php artisan filament:upgrade"
+            "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"

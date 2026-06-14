@@ -4,11 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Support\LiaraUrl;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 
 class HomeBannerController extends Controller
 {
+    public function upload(Request $request)
+    {
+        $request->validate([
+            'banner' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $file = $request->file('banner');
+        $path = $file->store('banners', 'liara');
+
+        Setting::setValue('home_banner_path', $path);
+
+        return back()->with('status', 'Banner uploaded successfully.');
+    }
+
     public function temporaryUrl(): ?string
     {
         $path = Setting::getValue('home_banner_path');

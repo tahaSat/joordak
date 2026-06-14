@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\InvoiceStatus;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,6 +36,16 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'cartCount' => $request->user()?->cartItems()->count() ?? 0,
+            'pendingPaymentInvoicesCount' => $request->user()
+                ?->invoices()
+                ->where('status', InvoiceStatus::PendingPayment)
+                ->count() ?? 0,
+            'flash' => [
+                'status' => fn () => $request->session()->get('status'),
+                'success' => fn () => $request->session()->get('success'),
+                'shared_cart_url' => fn () => $request->session()->get('shared_cart_url'),
+                'payment_track_id' => fn () => $request->session()->get('payment_track_id'),
+            ],
         ];
     }
 }

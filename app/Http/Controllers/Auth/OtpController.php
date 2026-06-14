@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\SendOtpRequest;
 use App\Services\OtpService;
 use App\Services\SmsService;
+use App\Support\PendingOtp;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
@@ -26,7 +28,7 @@ class OtpController extends Controller
             ]);
         }
 
-        RateLimiter::hit($throttleKey, 60);
+        RateLimiter::hit($throttleKey, PendingOtp::RESEND_COOLDOWN_SECONDS);
 
         $code = $otpService->generate($phone, $purpose);
 
@@ -40,6 +42,20 @@ class OtpController extends Controller
             ]);
         }
 
-        return back()->with('otp_sent', true);
+        PendingOtp::store(
+            $request,
+            $phone,
+            $purpose,
+            $purpose === 'register' ? (string) $request->input('name') : null,
+        );
+
+        return back();
+    }
+
+    public function cancel(Request $request): RedirectResponse
+    {
+        PendingOtp::forget($request);
+
+        return back();
     }
 }

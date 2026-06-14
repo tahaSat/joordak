@@ -1,7 +1,9 @@
 import Dropdown from '@/Components/Dropdown';
+import { SITE_LOGO_URL } from '@/Components/ApplicationLogo';
+import { loginUrl } from '@/lib/auth';
 import type { PageProps } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 
 interface StorefrontLayoutProps {
     title: string;
@@ -22,45 +24,165 @@ interface NavItem {
     href: string;
 }
 
+function CountBadge({ count }: { count: number }) {
+    if (count <= 0) {
+        return null;
+    }
+
+    return (
+        <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold leading-none text-white">
+            {count > 99 ? '99+' : count}
+        </span>
+    );
+}
+
 interface FooterLink {
     label: string;
     href: string;
     value: string;
 }
 
-const siteName = 'Joordak';
-const defaultDescription = 'فروشگاه آنلاین جردک — استایل خود را از بالا تا پایین بسازید.';
+import { actionButtonClassName, logoClassName, siteConfig } from '@/constants/siteConfig';
 
-// TODO: Replace with Joordak social URLs when provided
+const siteName = siteConfig.name;
+const defaultDescription = siteConfig.description;
 const footerLinks: FooterLink[] = [
     {
         label: 'پیج اینستاگرام',
-        href: '#',
-        value: '@joordak',
+        href: siteConfig.social.instagram.href,
+        value: siteConfig.social.instagram.label,
     },
     {
         label: 'کانال تلگرام',
-        href: '#',
-        value: 't.me/joordak',
+        href: siteConfig.social.telegram.href,
+        value: siteConfig.social.telegram.label,
     },
     {
         label: 'پشتیبانی',
-        href: '#',
-        value: 't.me/joordakadmin',
+        href: siteConfig.social.support.href,
+        value: siteConfig.social.support.label,
     },
     {
         label: 'بله',
-        href: '#',
-        value: 'ble.ir/joordak',
+        href: siteConfig.social.bale.href,
+        value: siteConfig.social.bale.label,
     },
 ];
+const enamadUrl = siteConfig.enamad.url;
+const enamadLogoUrl = siteConfig.enamad.logoUrl;
+// const zibalTrustScriptUrl = 'https://zibal.ir/trust/scripts/zibal-trust-v4.js';
 
-// TODO: Replace with Joordak e-namad credentials when provided
-const enamadUrl = '#';
-const enamadLogoUrl = '/logo.svg';
-const logoClassName = 'h-auto w-36 shrink-0 object-contain sm:w-44 lg:w-60';
-const actionButtonClassName =
-    'rounded-full bg-joordak-coral px-4 py-2 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-joordak-coral-dark';
+/*
+function ZibalTrustBadge() {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [shouldLoad, setShouldLoad] = useState(false);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) {
+            return;
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            setShouldLoad(true);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setShouldLoad(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '300px' },
+        );
+
+        observer.observe(container);
+
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!shouldLoad || !container || container.querySelector('script[src*="zibal-trust-v4.js"]')) {
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = zibalTrustScriptUrl;
+        script.type = 'text/javascript';
+        container.appendChild(script);
+
+        return () => {
+            container.querySelector('#zibal-trust-badge')?.remove();
+            script.remove();
+        };
+    }, [shouldLoad]);
+
+    return (
+        <div
+            ref={containerRef}
+            className="flex h-24 w-24 items-center justify-center rounded-2xl border border-white/20 bg-white p-2.5 shadow-sm"
+        />
+    );
+}
+*/
+
+function LazyEnamadBadge() {
+    const containerRef = useRef<HTMLAnchorElement>(null);
+    const [shouldLoad, setShouldLoad] = useState(false);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) {
+            return;
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            setShouldLoad(true);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setShouldLoad(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '300px' },
+        );
+
+        observer.observe(container);
+
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <a
+            ref={containerRef}
+            referrerPolicy="origin"
+            target="_blank"
+            rel="noopener noreferrer"
+            href={enamadUrl}
+            className="flex h-24 w-24 items-center justify-center rounded-2xl border border-white/20 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            aria-label="مشاهده نماد اعتماد الکترونیکی Joordak"
+        >
+            {shouldLoad && (
+                <img
+                    referrerPolicy="origin"
+                    src={enamadLogoUrl}
+                    alt="نماد اعتماد الکترونیکی"
+                    className="max-h-full max-w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                    {...{ code: '92hoaKWWiMFPHhlDdGWRCXYwG4ftr1Mj' }}
+                />
+            )}
+        </a>
+    );
+}
 
 function toAbsoluteUrl(value?: string | null): string | undefined {
     if (!value) {
@@ -77,7 +199,7 @@ function toAbsoluteUrl(value?: string | null): string | undefined {
 export default function StorefrontLayout({ title, seo, children }: StorefrontLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { props, url } = usePage<PageProps>();
-    const { auth, cartCount } = props;
+    const { auth, cartCount, pendingPaymentInvoicesCount } = props;
     const user = auth.user;
     const displayName = user ? [user.name, user.surname].filter(Boolean).join(' ') || user.phone || user.email || 'حساب کاربری' : '';
     const description = seo?.description?.trim() || defaultDescription;
@@ -88,7 +210,6 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
     const navItems: NavItem[] = [
         { label: 'خانه', href: route('landing') },
         { label: 'محصولات', href: route('products.index') },
-        { label: 'وبلاگ', href: route('blog.index') },
         ...(user ? [
             { label: 'حساب کاربری', href: route('dashboard') },
             { label: 'پروفایل', href: route('profile.edit') },
@@ -115,29 +236,33 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                 <meta head-key="twitter:description" name="twitter:description" content={description} />
                 {imageUrl && <meta head-key="twitter:image" name="twitter:image" content={imageUrl} />}
             </Head>
-            <div className="relative flex min-h-screen flex-col bg-white text-joordak-foreground">
-                <header className="sticky top-0 z-50 bg-joordak text-joordak-foreground">
+            <div className="relative flex min-h-screen flex-col bg-white text-slate-800">
+                <header className="sticky top-0 z-50 bg-joordak">
                     <div className="relative mx-auto flex max-w-[1480px] items-center justify-between gap-6 px-6 py-4 sm:px-10 lg:px-16">
-                        <div className="flex shrink-0 items-center gap-3">
-                            <Link href={route('landing')} className="flex shrink-0 items-center">
-                                <img src="/logo.svg" alt="فروشگاه جردک" className={logoClassName} />
-                            </Link>
-                            {user && cartCount > 0 && (
+                        {user && cartCount > 0 ? (
+                            <>
                                 <Link
                                     href={route('cart.index')}
-                                    className={`${actionButtonClassName} lg:hidden`}
+                                    className="rounded-full bg-joordak-coral px-4 py-2 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-white/90 lg:hidden"
                                 >
                                     سبد خرید ({cartCount})
                                 </Link>
-                            )}
-                        </div>
+                                <Link href={route('landing')} className="hidden items-center gap-3 lg:flex">
+                                    <img src={SITE_LOGO_URL} alt="فروشگاه جردک" decoding="async" className="h-9 w-auto object-contain lg:h-11" />
+                                </Link>
+                            </>
+                        ) : (
+                            <Link href={route('landing')} className="flex items-center gap-3">
+                                <img src={SITE_LOGO_URL} alt="فروشگاه جردک" decoding="async" className="h-9 w-auto object-contain lg:h-11" />
+                            </Link>
+                        )}
 
                         <button
                             type="button"
                             onClick={() => setIsMobileMenuOpen((prev) => !prev)}
                             aria-label={isMobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
                             aria-expanded={isMobileMenuOpen}
-                            className="inline-flex flex-col items-end gap-1.5 p-2 text-joordak-foreground lg:hidden"
+                            className="inline-flex flex-col items-end gap-1.5 p-2 text-white lg:hidden"
                         >
                             <span
                                 className={`h-0.5 rounded-full bg-current transition-all duration-300 ${isMobileMenuOpen ? 'w-5' : 'w-7'}`}
@@ -154,7 +279,7 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                 <Link
                                     key={item.label}
                                     href={item.href}
-                                    className="text-[1.05rem] font-semibold text-joordak-foreground transition hover:text-joordak-accent"
+                                    className="text-[1.05rem] font-semibold text-white transition hover:text-white/80"
                                 >
                                     {item.label}
                                 </Link>
@@ -166,7 +291,7 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                 <>
                                     <Link
                                         href={route('cart.index')}
-                                        className={actionButtonClassName}
+                                        className="rounded-full bg-joordak-coral px-4 py-2 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-white/90"
                                     >
                                         سبد خرید ({cartCount})
                                     </Link>
@@ -175,10 +300,11 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                             <span className="inline-flex rounded-full">
                                                 <button
                                                     type="button"
-                                                    className="inline-flex items-center rounded-full border border-joordak-foreground/15 bg-white/50 px-4 py-2 text-sm font-semibold text-joordak-foreground transition hover:bg-white/70 focus:outline-none"
+                                                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none"
                                                 >
                                                     {displayName}
-                                                    <svg className="ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <CountBadge count={pendingPaymentInvoicesCount} />
+                                                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                                         <path
                                                             fillRule="evenodd"
                                                             d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
@@ -189,12 +315,15 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                             </span>
                                         </Dropdown.Trigger>
 
-                                        <Dropdown.Content contentClasses="py-1 bg-white text-right text-joordak-foreground">
+                                        <Dropdown.Content contentClasses="py-1 bg-white text-right">
                                             <Dropdown.Link href={route('dashboard')}>حساب کاربری</Dropdown.Link>
                                             <Dropdown.Link href={route('profile.edit')}>پروفایل</Dropdown.Link>
-                                            <Dropdown.Link href={route('payment-history.index')}>پرداخت‌ها</Dropdown.Link>
+                                            <Dropdown.Link href={route('payment-history.index')} className="flex items-center justify-between gap-2">
+                                                <span>پرداخت‌ها</span>
+                                                <CountBadge count={pendingPaymentInvoicesCount} />
+                                            </Dropdown.Link>
                                             {user.role === 'admin' && (
-                                                <Dropdown.Link href="/admin">مدیریت</Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.dashboard')}>مدیریت</Dropdown.Link>
                                             )}
                                             <Dropdown.Link href={route('logout')} method="post" as="button">خروج</Dropdown.Link>
                                         </Dropdown.Content>
@@ -202,8 +331,8 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                 </>
                             ) : (
                                 <Link
-                                    href={route('login')}
-                                    className={`${actionButtonClassName} px-5`}
+                                    href={loginUrl(url)}
+                                    className="rounded-full bg-joordak-coral px-5 py-2 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-white/90"
                                 >
                                     ورود
                                 </Link>
@@ -212,7 +341,7 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                     </div>
 
                     <div
-                        className={`mx-auto mt-0 max-w-[1480px] overflow-hidden px-6 transition-all duration-500 ease-out lg:hidden ${isMobileMenuOpen ? 'max-h-[min(30rem,calc(100svh-5rem))] overflow-y-auto py-6 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))] opacity-100' : 'pointer-events-none max-h-0 py-0 opacity-0'}`}
+                        className={`mx-auto mt-0 max-w-[1480px] px-6 transition-all duration-500 ease-out lg:hidden ${isMobileMenuOpen ? 'max-h-none py-6 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))] opacity-100' : 'pointer-events-none max-h-0 overflow-hidden py-0 opacity-0'}`}
                     >
                         <div className="flex flex-col">
                             <nav className="flex flex-col items-center gap-6 text-center">
@@ -220,10 +349,13 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                     <Link
                                         key={`mobile-${item.label}`}
                                         href={item.href}
-                                        className="text-[1.15rem] font-semibold text-joordak-foreground transition hover:text-joordak-accent"
+                                        className="inline-flex items-center gap-2 text-[1.15rem] font-semibold text-white transition hover:text-white/80"
                                         onClick={() => setIsMobileMenuOpen(false)}
                                     >
                                         {item.label}
+                                        {item.href === route('payment-history.index') ? (
+                                            <CountBadge count={pendingPaymentInvoicesCount} />
+                                        ) : null}
                                     </Link>
                                 ))}
                             </nav>
@@ -233,12 +365,12 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                     <>
                                         <Link
                                             href={route('cart.index')}
-                                            className="w-full rounded-full bg-joordak-coral px-5 py-3 text-center text-lg font-semibold text-white transition hover:bg-joordak-coral-dark"
+                                            className="w-full rounded-full bg-joordak-coral px-5 py-3 text-center text-lg font-semibold text-white"
                                         >
                                             سبد خرید ({cartCount})
                                         </Link>
                                         {user.role === 'admin' && (
-                                            <a href="/admin" className="text-[1.05rem] font-semibold text-joordak-foreground">
+                                            <a href="/admin" className="text-[1.05rem] font-semibold text-white">
                                                 مدیریت
                                             </a>
                                         )}
@@ -246,22 +378,22 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                             href={route('logout')}
                                             method="post"
                                             as="button"
-                                            className="text-[1.05rem] font-semibold text-joordak-foreground"
+                                            className="text-[1.05rem] font-semibold text-white"
                                         >
                                             خروج
                                         </Link>
                                     </>
                                 ) : (
                                     <Link
-                                        href={route('login')}
-                                        className="w-full rounded-full bg-joordak-coral px-5 py-3 text-center text-lg font-semibold text-white transition hover:bg-joordak-coral-dark"
+                                        href={loginUrl(url)}
+                                        className="w-full rounded-full bg-joordak-coral px-5 py-3 text-center text-lg font-semibold text-white"
                                     >
                                         ورود
                                     </Link>
                                 )}
                             </div>
 
-                            <div className="mt-6 h-px w-full bg-joordak-foreground/15" aria-hidden="true" />
+                            <div className="mt-6 h-px w-full bg-white/20" aria-hidden="true" />
                         </div>
                     </div>
                 </header>
@@ -269,11 +401,11 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                 <main className="mx-auto w-full max-w-[1480px] flex-1 px-5 pt-8 pb-10 sm:px-7 lg:px-10 xl:px-14">
                     {children}
                 </main>
-                <footer className="border-t border-joordak-foreground/10 bg-joordak text-joordak-foreground" dir="rtl">
+                <footer className="border-t border-white/10 bg-joordak text-white" dir="rtl">
                     <div className="mx-auto flex max-w-[1480px] flex-col gap-5 px-5 py-5 sm:px-7 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-10 xl:px-14">
-                        <div className="flex flex-col items-center gap-4 text-center text-sm text-joordak-foreground/90 sm:flex-row sm:items-center sm:justify-center sm:text-right lg:justify-start">
+                        <div className="flex flex-col items-center gap-4 text-center text-sm text-white/90 sm:flex-row sm:items-center sm:justify-center sm:text-right lg:justify-start">
                             <div className="space-y-2 lg:flex lg:items-center lg:gap-5 lg:space-y-0">
-                                <h2 className="font-bold text-joordak-foreground">ارتباط با ما</h2>
+                                <h2 className="font-bold text-white">ارتباط با ما</h2>
                                 <div className="space-y-2 lg:flex lg:items-center lg:gap-5 lg:space-y-0">
                                     {footerLinks.map((item, index) => (
                                         <div key={item.label} className="lg:flex lg:items-center lg:gap-5">
@@ -281,13 +413,13 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                                 href={item.href}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="block transition hover:text-joordak-accent"
+                                                className="block transition hover:text-white/75"
                                             >
                                                 <span className="font-semibold">{item.label}: </span>
                                                 <span dir="ltr">{item.value}</span>
                                             </a>
                                             {index < footerLinks.length - 1 && (
-                                                <span className="hidden text-joordak-foreground/40 lg:block" aria-hidden="true">
+                                                <span className="hidden text-white/45 lg:block" aria-hidden="true">
                                                     |
                                                 </span>
                                             )}
@@ -297,21 +429,11 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                             </div>
                         </div>
 
-                        <a
-                            referrerPolicy="origin"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            href={enamadUrl}
-                            className="flex h-24 w-24 items-center justify-center self-center rounded-2xl border border-joordak-foreground/15 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:self-auto"
-                            aria-label="مشاهده نماد اعتماد الکترونیکی Joordak"
-                        >
-                            <img
-                                referrerPolicy="origin"
-                                src={enamadLogoUrl}
-                                alt="نماد اعتماد الکترونیکی"
-                                className="max-h-full max-w-full object-contain"
-                            />
-                        </a>
+                        <div className="flex items-center gap-4 self-center lg:self-auto" dir="ltr">
+                            {/* <ZibalTrustBadge /> */}
+                            <LazyEnamadBadge />
+                        </div>
+
                     </div>
                 </footer>
             </div>

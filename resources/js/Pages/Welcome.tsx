@@ -1,5 +1,7 @@
-import { Link, router, usePage } from '@inertiajs/react';
-import { joordakColors } from '@/constants/theme';
+import { SITE_LOGO_URL } from '@/Components/ApplicationLogo';
+import { Link, usePage } from '@inertiajs/react';
+import ProductCard from '@/Components/ProductCard';
+import { useOptimisticCart } from '@/hooks/useOptimisticCart';
 import StorefrontLayout from '@/Layouts/StorefrontLayout';
 
 interface Product {
@@ -9,210 +11,145 @@ interface Product {
     excerpt: string | null;
     price: string | number;
     image_url: string | null;
+    size: string | null;
+    color_name: string | null;
+    color_hex: string | null;
+    size_count: number;
+    color_count: number;
+    sub_product_id: number | null;
+    is_active?: boolean;
+    stock: number;
 }
 
-interface BlogPost {
+interface Category {
     id: number;
-    title: string;
-    excerpt: string | null;
-    content: string;
+    name: string;
+    slug: string;
     image_url: string | null;
-}
-
-interface PriceProps {
-    amount: string | number;
+    products_count: number;
 }
 
 interface WelcomeProps {
     featuredProducts: Product[];
-    recentPosts: BlogPost[];
+    categories: Category[];
     cartItems: Record<number, { quantity: number; cart_item_id: number }>;
     heroImageUrl?: string | null;
+    heroTitle?: string | null;
+    heroSubtitle?: string | null;
 }
 
-function Price({ amount }: PriceProps) {
-    return <span>﷼{Math.round(Number(amount)).toLocaleString()}</span>;
-}
-
-export default function Welcome({ featuredProducts, recentPosts, cartItems, heroImageUrl }: WelcomeProps) {
+export default function Welcome({ featuredProducts, categories, cartItems, heroImageUrl, heroTitle, heroSubtitle }: WelcomeProps) {
     const { auth } = usePage<{ auth: { user: any } }>().props;
-
-    const addToCart = (productId: number) => {
-        router.post(route('cart.store'), { product_id: productId, quantity: 1 }, { 
-            preserveScroll: true,
-            onSuccess: () => {
-                router.reload({ only: ['cartItems'] });
-            }
-        });
-    };
-
-    const updateQuantity = (productId: number, quantity: number) => {
-        const cartItemId = cartItems[productId]?.cart_item_id;
-        if (!cartItemId) return;
-        
-        router.patch(route('cart.update', { cartItem: cartItemId }), { quantity }, { 
-            preserveScroll: true,
-            onSuccess: () => {
-                router.reload({ only: ['cartItems'] });
-            }
-        });
-    };
-
-    const removeFromCart = (productId: number) => {
-        const cartItemId = cartItems[productId]?.cart_item_id;
-        if (!cartItemId) return;
-        
-        router.delete(route('cart.destroy', { cartItem: cartItemId }), { 
-            preserveScroll: true,
-            onSuccess: () => {
-                router.reload({ only: ['cartItems'] });
-            }
-        });
-    };
+    const resolvedHeroTitle = heroTitle?.trim() || 'به جردک خوش آمدید';
+    const resolvedHeroSubtitle = heroSubtitle?.trim() || 'فروشگاه آنلاین مد و پوشاک';
+    const {
+        cartItems: optimisticCartItems,
+        addToCart,
+        increaseQuantity,
+        decreaseQuantity,
+        isPending,
+    } = useOptimisticCart(cartItems);
 
     return (
         <StorefrontLayout
             title="خانه"
             seo={{
-                description: 'فروشگاه آنلاین جردک — استایل خود را از بالا تا پایین بسازید.',
-                image: heroImageUrl ?? '/logo.svg',
+                description: 'Joordak فروشگاه آنلاین زیورآلات، پیرسینگ، گردنبند و انگشتر.',
+                image: heroImageUrl ?? SITE_LOGO_URL,
             }}
         >
-            <section className="relative h-[500px] rounded-3xl overflow-hidden flex items-center justify-center">
+            <section className="group relative flex h-[500px] items-center justify-center overflow-hidden rounded-3xl shadow-md shadow-slate-200/70">
                 {heroImageUrl && (
                     <img
                         src={heroImageUrl}
                         alt="Home hero banner"
-                        loading="lazy"
-                        className="absolute inset-0 h-full w-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="high"
+                        className="absolute inset-0 h-full w-full object-cover transition-[filter,transform] duration-500 ease-in-out group-hover:blur-md group-hover:scale-105"
                     />
                 )}
-                <div className="absolute inset-0" style={{ backgroundImage: joordakColors.heroOverlay }} />
-                <div
-                    className="relative z-10 max-w-3xl px-5 text-center text-joordak-foreground"
-                    style={{ textShadow: joordakColors.heroTextShadow }}
-                >
-                    <h1 className="mt-2 flex flex-col gap-2 text-[48px] font-black md:flex-row md:justify-center md:gap-4">
-                        <span>به</span>
-                        <span className="text-joordak-accent">جردک</span>
-                        <span>خوش</span>
-                        <span>آمدید</span>
+                <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(120deg, rgba(28,88,114,0.75), rgba(28,88,114,0.45))' }} />
+                <div className="relative z-10 text-center text-white max-w-[800px] p-5">
+                    <h1 className="mt-4 text-[48px] font-black transition-transform duration-500 ease-in-out group-hover:scale-110">
+                        {resolvedHeroTitle}
                     </h1>
-                    <p className="mt-4 text-lg">
-                        به استایلت از بالا به پایین نگاه کن
+                    <p className="mt-4 text-lg opacity-95 transition-transform duration-500 ease-in-out group-hover:scale-110">
+                        {resolvedHeroSubtitle}
                     </p>
-                    <div className="mt-8 flex flex-wrap justify-center gap-4">
-                        <Link
-                            href={route('products.index')}
-                            className="rounded-full bg-joordak-coral px-6 py-3 font-bold text-white transition hover:bg-joordak-coral-dark"
-                            style={{ boxShadow: joordakColors.heroButtonShadow }}
-                        >
-                            خرید
-                        </Link>
-                        <Link
-                            href={route('blog.index')}
-                            className="rounded-full border-2 border-joordak-foreground bg-white/95 px-6 py-3 font-bold text-joordak-foreground transition hover:bg-joordak-soft"
-                            style={{ boxShadow: joordakColors.heroButtonShadow }}
-                        >
-                            وبلاگ
+                    <div style={{ marginTop: '32px', display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <Link href={route('products.index')} className="transition-transform duration-300 ease-in-out hover:scale-110" style={{ backgroundColor: 'white', color: 'joordak-coral', padding: '12px 24px', borderRadius: '9999px', fontWeight: 'bold', textDecoration: 'none' }}>
+                           خرید
                         </Link>
                     </div>
                 </div>
             </section>
 
-            <section style={{ marginBottom: '90px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px' ,fontWeight:'bold'  }}>
-                    <h2>محصولات</h2>
-                    <Link href="/products" style={{ color: joordakColors.accent, textDecoration: 'none', fontWeight: 'bold' }}> همه</Link>
-                </div>
-                <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '16px' }}>
-                    {featuredProducts.map((product) => (
-                        <article key={product.id} style={{ flexShrink: 0, width: '288px', border: `1px solid ${joordakColors.border}`, borderRadius: '24px', overflow: 'hidden' }}>
-                            <Link href={route('products.show', product.slug)} style={{ display: 'block', textDecoration: 'none' }}>
-                                {product.image_url ? (
+            {categories.length > 0 && (
+                <section style={{ marginBottom: '40px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px', fontWeight: 'bold' }}>
+                        <h2>دسته بندی ها</h2>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:thin]">
+                        {categories.map((category) => (
+                            <Link
+                                key={category.id}
+                                href={route('products.index', { category: category.slug })}
+                                className="group shrink-0 overflow-hidden rounded-3xl border-[3px] border-joordak shadow-md shadow-slate-200/70 no-underline"
+                                style={{ width: '200px', color: 'inherit' }}
+                            >
+                                {category.image_url ? (
                                     <img
-                                        src={product.image_url}
-                                        alt={product.title}
-                                        style={{ aspectRatio: '3 / 2', width: '100%', objectFit: 'cover' }}
+                                        src={category.image_url}
+                                        alt={category.name}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="aspect-[3/2] w-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-125 group-active:scale-125"
                                     />
                                 ) : (
-                                    <div style={{ aspectRatio: '3 / 2', width: '100%', background: joordakColors.placeholderGradient }} />
+                                    <div className="aspect-[3/2] w-full bg-gradient-to-br from-[joordak-soft] via-white to-[joordak-gradient] transition-transform duration-500 ease-in-out group-hover:scale-125 group-active:scale-125" />
                                 )}
+                                <div className="p-3 text-center">
+                                    <div className="font-bold">{category.name}</div>
+                                    <div className="mt-1 text-xs font-semibold text-stone-500">
+                                        {category.products_count.toLocaleString()} محصول
+                                    </div>
+                                </div>
                             </Link>
-                            <div style={{ padding: '16px' }}>
-                                <Link href={route('products.show', product.slug)} style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}>
-                                    <h3 style={{ fontWeight: 'bold' }}>{product.title}</h3>
-                                    <p style={{ marginTop: '8px', fontSize: '14px', color: joordakColors.text }}>{product.excerpt ?? 'محصول تازه اضافه شده.'}</p>
-                                </Link>
-                                <p style={{ marginTop: '16px', fontSize: '18px', fontWeight: 'bold', color: joordakColors.accent }}><Price amount={product.price} /></p>
-                                {auth.user ? (
-                                    cartItems[product.id]?.quantity ? (
-                                        <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => updateQuantity(product.id, cartItems[product.id].quantity + 1)}
-                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '50%', backgroundColor: joordakColors.primary, color: joordakColors.foreground, border: 'none', cursor: 'pointer' }}
-                                            >
-                                                +
-                                            </button>
-                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: joordakColors.accent }}>{cartItems[product.id].quantity}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (cartItems[product.id].quantity > 1) {
-                                                        updateQuantity(product.id, cartItems[product.id].quantity - 1);
-                                                    } else {
-                                                        removeFromCart(product.id);
-                                                    }
-                                                }}
-                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '50%', backgroundColor: joordakColors.primary, color: joordakColors.foreground, border: 'none', cursor: 'pointer' }}
-                                            >
-                                                -
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={() => addToCart(product.id)}
-                                            style={{ marginTop: '16px', width: '100%', borderRadius: '8px', backgroundColor: joordakColors.primary, color: joordakColors.foreground, padding: '8px 16px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-                                        >
-                                            افزودن به سبد
-                                        </button>
-                                    )
-                                ) : (
-                                    <Link href={route('login')} style={{ marginTop: '16px', display: 'block', borderRadius: '8px', border: '1px solid #d6d6d6', padding: '8px 16px', textAlign: 'center', fontSize: '12px', textDecoration: 'none' }}>
-                                        برای خرید وارد شوید
-                                    </Link>
-                                )}
-                            </div>
-                        </article>
-                    ))}
-                </div>
-            </section>
+                        ))}
+                    </div>
+                </section>
+            )}
 
-            <section style={{ marginBottom: '40px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px' ,fontWeight:'bold'  }}>
-                    <h2>آخرین مطالب وبلاگ</h2>
-                    <Link href="/blog" style={{ color: joordakColors.accent, textDecoration: 'none', fontWeight: 'bold' }}> همه</Link>
+            <section style={{ marginBottom: '90px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px', fontWeight: 'bold' }}>
+                    <h2>محصولات</h2>
                 </div>
-                <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '16px' }}>
-                    {recentPosts.map((post) => (
-                        <article key={post.id} style={{ flexShrink: 0, width: '288px', border: `1px solid ${joordakColors.border}`, borderRadius: '24px', overflow: 'hidden' }}>
-                            {post.image_url ? (
-                                <img
-                                    src={post.image_url}
-                                    alt={post.title}
-                                    style={{ height: '192px', width: '100%', objectFit: 'cover' }}
-                                />
-                            ) : (
-                                <div style={{ height: '192px', width: '100%', background: joordakColors.placeholderGradient }} />
-                            )}
-                            <div style={{ padding: '16px' }}>
-                                <h3 style={{ fontWeight: 'bold' }}>{post.title}</h3>
-                                <p style={{ marginTop: '8px', fontSize: '14px', color: joordakColors.text }}>{post.excerpt ?? post.content}</p>
-                            </div>
-                        </article>
+                <div className="flex gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:thin] md:gap-4">
+                    {featuredProducts.map((product) => (
+                        <ProductCard
+                            key={product.id}
+                            product={product}
+                            cartItems={optimisticCartItems}
+                            isAuthenticated={Boolean(auth.user)}
+                            onAddToCart={addToCart}
+                            onIncreaseQuantity={increaseQuantity}
+                            onDecreaseQuantity={decreaseQuantity}
+                            isCartActionPending={isPending}
+                            variant="compact"
+                        />
                     ))}
+                    <Link
+                        href={route('products.index')}
+                        className="flex shrink-0 self-stretch flex-col items-center justify-center gap-2 px-3 font-bold text-joordak-coral no-underline transition-transform duration-300 ease-in-out hover:scale-105 md:gap-3 md:px-4"
+                    >
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-joordak text-white md:h-12 md:w-12">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 md:h-6 md:w-6">
+                                <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                        </span>
+                        <span className="text-sm">مشاهده بیشتر</span>
+                    </Link>
                 </div>
             </section>
         </StorefrontLayout>

@@ -13,8 +13,11 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'product_id',
+        'sub_product_id',
         'product_name',
         'unit_price',
+        'original_unit_price',
+        'product_discount_amount',
         'quantity',
         'line_total',
     ];
@@ -22,8 +25,10 @@ class InvoiceItem extends Model
     protected function casts(): array
     {
         return [
-            'unit_price' => 'decimal:2',
-            'line_total' => 'decimal:2',
+            'unit_price' => 'integer',
+            'original_unit_price' => 'integer',
+            'product_discount_amount' => 'integer',
+            'line_total' => 'integer',
         ];
     }
 
@@ -35,5 +40,10 @@ class InvoiceItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function subProduct(): BelongsTo
+    {
+        return $this->belongsTo(SubProduct::class);
     }
 }

@@ -2,22 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Invoice;
+use App\Enums\InvoiceStatus;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaymentHistoryController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $invoices = auth()->user()
+        $pendingOnly = $request->boolean('pending_only');
+
+        $invoices = $request->user()
             ->invoices()
-            ->with('items')
+            ->with(['items', 'latestPayment'])
+            ->when($pendingOnly, fn ($query) => $query->where('status', InvoiceStatus::PendingPayment))
             ->latest()
-            ->get();
+            ->paginate(15)
+            ->withQueryString();
 
         return Inertia::render('PaymentHistory/Index', [
             'invoices' => $invoices,
+            'filters' => [
+                'pending_only' => $pendingOnly,
+            ],
         ]);
     }
 }

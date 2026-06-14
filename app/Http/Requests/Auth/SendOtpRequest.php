@@ -29,6 +29,7 @@ class SendOtpRequest extends FormRequest
         return [
             'phone' => ['required', 'string', 'max:20'],
             'purpose' => ['required', 'string', Rule::in(['login', 'register'])],
+            'name' => ['required_if:purpose,register', 'nullable', 'string', 'max:255'],
         ];
     }
 

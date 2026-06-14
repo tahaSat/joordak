@@ -1,41 +1,39 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
+import OtpResendButton from '@/Components/OtpResendButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import { useOtpResendCooldown } from '@/hooks/useOtpResendCooldown';
+import { registerUrl } from '@/lib/auth';
 import StorefrontLayout from '@/Layouts/StorefrontLayout';
 import type { LoginPageProps, PageProps } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { ChangeEvent, FormEvent } from 'react';
 
-export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
-    const [codeSent, setCodeSent] = useState(Boolean(otpSent));
+export default function Login({ status, pendingOtp }: PageProps<LoginPageProps>) {
+    const { url } = usePage();
+    const hasPendingOtp = Boolean(pendingOtp);
+    const { secondsLeft, canResend, restart, reset } = useOtpResendCooldown(pendingOtp?.resendSecondsRemaining ?? 0);
 
     const sendForm = useForm({
-        phone: '',
+        phone: pendingOtp?.phone ?? '',
         purpose: 'login',
     });
 
     const loginForm = useForm({
-        phone: '',
+        phone: pendingOtp?.phone ?? '',
         otp: '',
         remember: false,
     });
 
-    useEffect(() => {
-        if (otpSent) {
-            setCodeSent(true);
-            loginForm.setData('phone', sendForm.data.phone);
-        }
-    }, [otpSent]);
-
-    const sendOtp = (event: FormEvent) => {
-        event.preventDefault();
+    const sendOtp = (event?: FormEvent) => {
+        event?.preventDefault();
 
         sendForm.post(route('otp.send'), {
             preserveScroll: true,
             onSuccess: () => {
-                setCodeSent(true);
                 loginForm.setData('phone', sendForm.data.phone);
+                restart();
             },
         });
     };
@@ -43,14 +41,22 @@ export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
     const submitLogin = (event: FormEvent) => {
         event.preventDefault();
 
+        loginForm.setData('phone', pendingOtp?.phone ?? sendForm.data.phone ?? loginForm.data.phone);
+
         loginForm.post(route('login'), {
             onFinish: () => loginForm.reset('otp'),
         });
     };
 
     const changePhone = () => {
-        setCodeSent(false);
-        loginForm.reset('otp');
+        router.post(route('otp.cancel'), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                reset();
+                sendForm.reset();
+                loginForm.reset();
+            },
+        });
     };
 
     return (
@@ -59,11 +65,11 @@ export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
 
             <div style={{ maxWidth: '400px', margin: '48px auto', padding: '0 24px' }}>
                 <h1 className="text-3xl font-black mb-2">ورود</h1>
-                <p className="mb-6 text-sm text-joordak-foreground">با شماره موبایل و کد یکبار مصرف وارد شوید.</p>
+                <p className="mb-6 text-sm text-gray-600">با شماره موبایل و کد یکبار مصرف وارد شوید.</p>
 
-                {status && <div className="mb-4 text-sm font-medium text-joordak-foreground">{status}</div>}
+                {status && <div className="mb-4 text-sm font-medium text-green-600">{status}</div>}
 
-                {!codeSent ? (
+                {!hasPendingOtp ? (
                     <form onSubmit={sendOtp}>
                         <div>
                             <InputLabel htmlFor="phone" value="شماره موبایل" />
@@ -82,7 +88,7 @@ export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
                         </div>
 
                         <div className="mt-6 flex items-center justify-between">
-                            <Link href={route('register')} className="rounded-md text-sm text-joordak-foreground underline hover:text-joordak-foreground focus:outline-none">
+                            <Link href={registerUrl(url)} className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none">
                                 حساب کاربری ندارید؟ ثبت‌نام
                             </Link>
 
@@ -91,20 +97,23 @@ export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
                     </form>
                 ) : (
                     <form onSubmit={submitLogin}>
-                        <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-joordak-foreground">
-                            کد تأیید به شماره {loginForm.data.phone || sendForm.data.phone} ارسال شد.
+                        <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+                            کد تأیید به شماره {pendingOtp?.phone} ارسال شد.
                         </div>
 
                         <div>
                             <InputLabel htmlFor="otp" value="کد تأیید" />
                             <TextInput
                                 id="otp"
-                                type="text"
+                                type="tel"
                                 name="otp"
                                 inputMode="numeric"
+                                pattern="[0-9]{6}"
+                                minLength={6}
                                 maxLength={6}
+                                required
                                 value={loginForm.data.otp}
-                                className="mt-1 block w-full tracking-[0.35em]"
+                                className="mt-1 block w-full text-center text-lg tracking-[0.35em]"
                                 autoComplete="one-time-code"
                                 isFocused
                                 placeholder="123456"
@@ -114,6 +123,12 @@ export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
                             />
                             <InputError message={loginForm.errors.otp} className="mt-2" />
                             <InputError message={loginForm.errors.phone} className="mt-2" />
+                            <OtpResendButton
+                                canResend={canResend}
+                                secondsLeft={secondsLeft}
+                                processing={sendForm.processing}
+                                onResend={() => sendOtp()}
+                            />
                         </div>
 
                         <div className="mt-4 block">
@@ -125,7 +140,7 @@ export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
                                     onChange={(e: ChangeEvent<HTMLInputElement>) => loginForm.setData('remember', e.target.checked)}
                                     className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
                                 />
-                                <span className="ms-2 text-sm text-joordak-foreground">مرا به خاطر بسپار</span>
+                                <span className="ms-2 text-sm text-gray-600">مرا به خاطر بسپار</span>
                             </label>
                         </div>
 
@@ -133,7 +148,7 @@ export default function Login({ status, otpSent }: PageProps<LoginPageProps>) {
                             <button
                                 type="button"
                                 onClick={changePhone}
-                                className="rounded-md text-sm text-joordak-foreground underline hover:text-joordak-foreground focus:outline-none"
+                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none"
                             >
                                 تغییر شماره
                             </button>

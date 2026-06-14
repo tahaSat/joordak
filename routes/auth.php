@@ -26,6 +26,9 @@ Route::middleware('guest')->group(function () {
     Route::post('otp/send', [OtpController::class, 'send'])
         ->name('otp.send');
 
+    Route::post('otp/cancel', [OtpController::class, 'cancel'])
+        ->name('otp.cancel');
+
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 

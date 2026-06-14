@@ -13,6 +13,7 @@ class CartItem extends Model
     protected $fillable = [
         'user_id',
         'product_id',
+        'sub_product_id',
         'quantity',
         'unit_price',
     ];
@@ -20,7 +21,7 @@ class CartItem extends Model
     protected function casts(): array
     {
         return [
-            'unit_price' => 'decimal:2',
+            'unit_price' => 'integer',
         ];
     }
 
@@ -32,5 +33,10 @@ class CartItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function subProduct(): BelongsTo
+    {
+        return $this->belongsTo(SubProduct::class);
     }
 }

@@ -7,6 +7,7 @@ export interface User {
     email: string | null;
     phone?: string | null;
     address?: string | null;
+    address_province?: string | null;
     postal_code?: string | null;
     role: string;
     email_verified_at?: string | null;
@@ -17,15 +18,29 @@ export type PageProps<T extends object = Record<string, unknown>> = T & {
         user: User | null;
     };
     cartCount: number;
+    pendingPaymentInvoicesCount: number;
+    flash?: {
+        status?: string | null;
+        success?: string | null;
+        shared_cart_url?: string | null;
+        payment_track_id?: string | null;
+    };
 };
+
+export interface PendingOtpState {
+    phone: string;
+    name?: string | null;
+    sentAt: number;
+    resendSecondsRemaining: number;
+}
 
 export interface LoginPageProps {
     status?: string | null;
-    otpSent?: boolean;
+    pendingOtp?: PendingOtpState | null;
 }
 
 export interface RegisterPageProps {
-    otpSent?: boolean;
+    pendingOtp?: PendingOtpState | null;
 }
 
 export interface VerifyEmailPageProps {

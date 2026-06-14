@@ -39,6 +39,15 @@ return [
         'api_key' => env('SMS_API_KEY'),
         'template_id' => env('SMS_TEMPLATE_ID'),
         'otp_parameter_name' => env('SMS_OTP_PARAMETER_NAME', 'Code'),
+        'delivered_to_post_template_id' => env('SMS_DELIVERED_TO_POST_TEMPLATE_ID', 982417),
+    ],
+
+    'zibal' => [
+        'merchant' => env('ZIBAL_MERCHANT', env('ZIBAL_MERCHANT_ID')),
+        'base_url' => env('ZIBAL_BASE_URL', 'https://gateway.zibal.ir'),
+        'start_url' => env('ZIBAL_START_URL', 'https://gateway.zibal.ir/start'),
+        'callback_url' => env('ZIBAL_CALLBACK_URL'),
+        'timeout' => env('ZIBAL_TIMEOUT', 15),
     ],
 
 ];

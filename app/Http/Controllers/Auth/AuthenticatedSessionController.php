@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\OtpService;
+use App\Support\PendingOtp;
+use App\Support\RedirectAfterAuth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,11 +18,13 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        RedirectAfterAuth::rememberFromQuery($request);
+
         return Inertia::render('Auth/Login', [
             'status' => session('status'),
-            'otpSent' => session('otp_sent', false),
+            'pendingOtp' => PendingOtp::forInertia($request, 'login'),
         ]);
     }
 
@@ -32,6 +36,8 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate($otpService);
 
         $request->session()->regenerate();
+
+        PendingOtp::forget($request);
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

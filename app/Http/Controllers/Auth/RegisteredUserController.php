@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\OtpService;
+use App\Support\PendingOtp;
 use App\Support\PhoneNumber;
+use App\Support\RedirectAfterAuth;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,10 +23,12 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        RedirectAfterAuth::rememberFromQuery($request);
+
         return Inertia::render('Auth/Register', [
-            'otpSent' => session('otp_sent', false),
+            'pendingOtp' => PendingOtp::forInertia($request, 'register'),
         ]);
     }
 
@@ -72,6 +76,8 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        PendingOtp::forget($request);
+
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 }
