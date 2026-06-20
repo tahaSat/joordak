@@ -20,7 +20,10 @@ class CancelStalePendingInvoices
         $cancelled = 0;
 
         Invoice::query()
-            ->where('status', InvoiceStatus::PendingPayment)
+            ->whereIn('status', [
+                InvoiceStatus::PendingPayment,
+                InvoiceStatus::ProcessingPayment,
+            ])
             ->where('created_at', '<=', $cutoff)
             ->orderBy('id')
             ->chunkById(100, function ($invoices) use (&$cancelled): void {
@@ -28,7 +31,10 @@ class CancelStalePendingInvoices
                     $didCancel = DB::transaction(function () use ($invoice): bool {
                         $locked = Invoice::query()->lockForUpdate()->find($invoice->id);
 
-                        if (! $locked || $locked->status !== InvoiceStatus::PendingPayment) {
+                        if (! $locked || ! in_array($locked->status, [
+                            InvoiceStatus::PendingPayment,
+                            InvoiceStatus::ProcessingPayment,
+                        ], true)) {
                             return false;
                         }
 

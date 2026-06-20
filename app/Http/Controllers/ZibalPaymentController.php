@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
-use App\Jobs\ReconcileZibalPayment;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\PaymentLifecycleService;
@@ -93,8 +92,6 @@ class ZibalPaymentController extends Controller
                 'track_id' => $payment->gateway_track_id,
                 'gateway_order_id' => $payment->gateway_order_id,
             ]);
-
-            ReconcileZibalPayment::dispatch($payment)->delay(now()->addMinutes(5));
 
             return $this->gatewayResponse($payment, $zibal);
         } catch (Throwable $exception) {
