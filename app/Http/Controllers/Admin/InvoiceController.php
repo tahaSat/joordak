@@ -132,7 +132,7 @@ class InvoiceController extends Controller
             try {
                 $smsService->sendDeliveredToPostNotification(
                     $phone,
-                    (string) ($invoice->postal_code ?? ''),
+                    (string) ($invoice->post_tracking_code ?? ''),
                     route('invoices.show', $invoice, absolute: true),
                 );
             } catch (\Throwable $exception) {

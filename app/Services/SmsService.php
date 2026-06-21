@@ -21,12 +21,12 @@ class SmsService
         ], 'Failed to send verification SMS.');
     }
 
-    public function sendDeliveredToPostNotification(string $phone, string $postalCode, string $invoiceLink): void
+    public function sendDeliveredToPostNotification(string $phone, string $postTrackingCode, string $invoiceLink): void
     {
         $templateId = config('services.sms.delivered_to_post_template_id', 982417);
 
         $this->sendTemplate($phone, (int) $templateId, [
-            'CODE' => $postalCode,
+            'CODE' => $postTrackingCode,
             'LINK' => $invoiceLink,
         ], 'Failed to send delivered-to-post SMS.');
     }
