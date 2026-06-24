@@ -1,1 +1,5 @@
-export const PRODUCT_IMAGE_ASPECT_CLASS = 'aspect-[3/2]';
+export const PRODUCT_IMAGE_ASPECT_CLASS = 'aspect-[9/16]';
+
+export const PRODUCT_IMAGE_UPLOAD_WIDTH = 576;
+
+export const PRODUCT_IMAGE_UPLOAD_HEIGHT = 1024;

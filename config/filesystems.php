@@ -78,6 +78,10 @@ return [
             'endpoint' => env('LIARA_ENDPOINT'),
             'use_path_style_endpoint' => env('LIARA_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'private',
+            'http' => [
+                'connect_timeout' => (float) env('LIARA_CONNECT_TIMEOUT', 10),
+                'timeout' => (float) env('LIARA_REQUEST_TIMEOUT', 30),
+            ],
             'throw' => false,
             'report' => false,
         ],

@@ -119,6 +119,7 @@ export default function ImageCropperModal({
     } | null>(null);
     const imageUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
     const aspectRatio = outputWidth / outputHeight;
+    const isPortraitCrop = outputHeight > outputWidth;
     const targetRatio = outputWidth / outputHeight;
     const coverWidth = imageRatio && imageRatio > targetRatio ? outputHeight * imageRatio : outputWidth;
     const coverHeight = imageRatio && imageRatio > targetRatio ? outputHeight : outputWidth / (imageRatio ?? targetRatio);
@@ -247,18 +248,23 @@ export default function ImageCropperModal({
 
                 {imageUrl && (
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 p-3">
-                        <div
-                            className={`relative mx-auto w-full touch-none overflow-hidden rounded-xl bg-slate-800 ${
-                                imageRatio && !isBusy ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''
-                            }`}
-                            role="img"
-                            aria-label="پیش‌نمایش برش"
-                            style={{ aspectRatio }}
-                            onPointerDown={handlePointerDown}
-                            onPointerMove={handlePointerMove}
-                            onPointerUp={stopDragging}
-                            onPointerCancel={stopDragging}
-                        >
+                        <div className={isPortraitCrop ? 'flex justify-center' : undefined}>
+                            <div
+                                className={`relative touch-none overflow-hidden rounded-xl bg-slate-800 ${
+                                    isPortraitCrop
+                                        ? 'h-[min(55vh,28rem)] w-auto max-w-full'
+                                        : 'mx-auto w-full'
+                                } ${
+                                    imageRatio && !isBusy ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''
+                                }`}
+                                role="img"
+                                aria-label="پیش‌نمایش برش"
+                                style={{ aspectRatio }}
+                                onPointerDown={handlePointerDown}
+                                onPointerMove={handlePointerMove}
+                                onPointerUp={stopDragging}
+                                onPointerCancel={stopDragging}
+                            >
                             {imageRatio ? (
                                 <img
                                     src={imageUrl}
@@ -277,6 +283,7 @@ export default function ImageCropperModal({
                                     در حال آماده‌سازی پیش‌نمایش...
                                 </div>
                             )}
+                            </div>
                         </div>
                     </div>
                 )}

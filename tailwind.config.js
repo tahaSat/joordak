@@ -15,7 +15,7 @@ export default {
     theme: {
         extend: {
             aspectRatio: {
-                product: '3 / 2',
+                product: '9 / 16',
             },
             colors: {
                 joordak: {

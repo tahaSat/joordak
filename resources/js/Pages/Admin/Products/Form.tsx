@@ -1,6 +1,7 @@
 import AdminCard from '@/Components/Admin/AdminCard';
 import AdminFormField from '@/Components/Admin/AdminFormField';
 import ImageCropperModal, { type CropResult } from '@/Components/Admin/ImageCropperModal';
+import { PRODUCT_IMAGE_UPLOAD_HEIGHT, PRODUCT_IMAGE_UPLOAD_WIDTH } from '@/constants/productImage';
 import AdminPageHeader from '@/Components/Admin/AdminPageHeader';
 import AdminLayout from '@/Layouts/AdminLayout';
 import type { AdminProduct, AdminSubProduct, Option } from '@/types/admin';
@@ -65,9 +66,6 @@ const productImageRequestTimeout = 30_000;
 const productImagePollInterval = 1_000;
 const productImageMaxPolls = 30;
 const maxProductPrice = 999_999_999_999_999;
-const productImageUploadWidth = 576;
-const productImageUploadHeight = 384;
-
 function toLocalInput(value: string | null): string {
     if (!value) {
         return '';
@@ -175,8 +173,14 @@ export default function ProductForm({ product, categories }: ProductFormProps) {
     function submit(event: FormEvent) {
         event.preventDefault();
 
+        form.transform((data) => ({
+            ...data,
+            image_url: coverImage?.path ?? data.image_url ?? '',
+            subproducts: serializeSubProducts(subProducts),
+            ...(product ? { _method: 'put' as const } : {}),
+        }));
+
         if (product) {
-            form.transform((data) => ({ ...data, _method: 'put' }));
             form.post(route('admin.products.update', product.id), {
                 preserveScroll: true,
             });
@@ -607,8 +611,8 @@ export default function ProductForm({ product, categories }: ProductFormProps) {
                 file={pendingCoverFile}
                 title="برش تصویر اصلی محصول"
                 description="کادر تصویر را تنظیم کنید؛ بعد از تایید، تصویر آپلود می‌شود."
-                outputWidth={productImageUploadWidth}
-                outputHeight={productImageUploadHeight}
+                outputWidth={PRODUCT_IMAGE_UPLOAD_WIDTH}
+                outputHeight={PRODUCT_IMAGE_UPLOAD_HEIGHT}
                 fallbackName="product-image"
                 isProcessing={isCoverUploading}
                 onCancel={() => setPendingCoverFile(null)}
@@ -618,8 +622,8 @@ export default function ProductForm({ product, categories }: ProductFormProps) {
                 file={pendingGalleryFile}
                 title={`برش تصویر گالری ${pendingGalleryFiles.length ? pendingGalleryIndex + 1 : 0} از ${pendingGalleryFiles.length}`}
                 description="هر تصویر گالری قبل از آپلود جداگانه برش داده می‌شود."
-                outputWidth={productImageUploadWidth}
-                outputHeight={productImageUploadHeight}
+                outputWidth={PRODUCT_IMAGE_UPLOAD_WIDTH}
+                outputHeight={PRODUCT_IMAGE_UPLOAD_HEIGHT}
                 fallbackName="product-gallery-image"
                 isProcessing={isGalleryUploading}
                 onCancel={cancelGalleryCrop}
