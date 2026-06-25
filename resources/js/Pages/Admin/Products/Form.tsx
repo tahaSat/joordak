@@ -1,7 +1,12 @@
 import AdminCard from '@/Components/Admin/AdminCard';
 import AdminFormField from '@/Components/Admin/AdminFormField';
 import ImageCropperModal, { type CropResult } from '@/Components/Admin/ImageCropperModal';
-import { PRODUCT_IMAGE_UPLOAD_HEIGHT, PRODUCT_IMAGE_UPLOAD_WIDTH } from '@/constants/productImage';
+import {
+    PRODUCT_IMAGE_CROP_HINT,
+    PRODUCT_IMAGE_GALLERY_CROP_HINT,
+    PRODUCT_IMAGE_UPLOAD_HEIGHT,
+    PRODUCT_IMAGE_UPLOAD_WIDTH,
+} from '@/constants/productImage';
 import AdminPageHeader from '@/Components/Admin/AdminPageHeader';
 import AdminLayout from '@/Layouts/AdminLayout';
 import type { AdminProduct, AdminSubProduct, Option } from '@/types/admin';
@@ -471,7 +476,7 @@ export default function ProductForm({ product, categories }: ProductFormProps) {
                                 <p className="mb-4 text-sm font-semibold text-slate-500">تصویر اصلی هنوز آپلود نشده است.</p>
                             )}
                             <p className="mb-3 text-xs font-semibold text-slate-500">
-                                تصویر قبل از آپلود با نسبت ۳:۲ و اندازه ۵۷۶×۳۸۴ برش داده می‌شود.
+                                {PRODUCT_IMAGE_CROP_HINT}
                             </p>
                             <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-joordak px-4 py-2 text-sm font-bold text-white transition hover:bg-[#17475c]">
                                 {isCoverUploading ? 'در حال آپلود...' : 'آپلود تصویر اصلی'}
@@ -585,7 +590,7 @@ export default function ProductForm({ product, categories }: ProductFormProps) {
                                                 <p className="mb-4 text-sm font-semibold text-slate-500">هیچ تصویری برای گالری این زیرمحصول آپلود نشده است.</p>
                                             )}
                                             <p className="mb-3 text-xs font-semibold text-slate-500">
-                                                همه تصاویر گالری قبل از آپلود با نسبت ۳:۲ و اندازه ۵۷۶×۳۸۴ برش داده می‌شوند.
+                                                {PRODUCT_IMAGE_GALLERY_CROP_HINT}
                                             </p>
                                             <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-joordak px-4 py-2 text-sm font-bold text-white transition hover:bg-[#17475c]">
                                                 {isGalleryUploading && pendingSubProductIndex === subProductIndex ? 'در حال آپلود...' : 'آپلود تصاویر گالری'}

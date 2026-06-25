@@ -2,7 +2,7 @@ import CartActionControls from '@/Components/CartActionControls';
 import { useOptimisticCart } from '@/hooks/useOptimisticCart';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import { PRODUCT_IMAGE_ASPECT_CLASS } from '@/constants/productImage';
+import { PRODUCT_CARD_IMAGE_ASPECT_CLASS } from '@/constants/productImage';
 import StorefrontLayout from '@/Layouts/StorefrontLayout';
 import { loginUrl } from '@/lib/auth';
 
@@ -233,7 +233,7 @@ export default function ProductShow({ product, galleryImages, cartItems }: Produ
                         <EcommerceZoom
                             imageUrl={activeImage}
                             alt={product.title}
-                            imageClassName={`${PRODUCT_IMAGE_ASPECT_CLASS} w-full object-cover`}
+                            imageClassName={`${PRODUCT_CARD_IMAGE_ASPECT_CLASS} w-full object-cover`}
                         />
 
                         {images.length > 1 && (
@@ -269,7 +269,7 @@ export default function ProductShow({ product, galleryImages, cartItems }: Produ
                                         activeIndex === index ? 'border-joordak' : 'border-transparent'
                                     }`}
                                 >
-                                    <img src={image} alt={`${product.title} ${index + 1}`} loading="lazy" decoding="async" className={`${PRODUCT_IMAGE_ASPECT_CLASS} w-full object-cover`} />
+                                    <img src={image} alt={`${product.title} ${index + 1}`} loading="lazy" decoding="async" className={`${PRODUCT_CARD_IMAGE_ASPECT_CLASS} w-full object-cover`} />
                                 </button>
                             ))}
                         </div>
