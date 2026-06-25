@@ -1,3 +1,4 @@
+import { formatNumberFa } from '@/lib/format';
 import { useEffect, useRef, useState } from 'react';
 
 interface CartActionControlsProps {
@@ -35,7 +36,7 @@ function AnimatedQuantity({
                           : 'animate-cart-quantity-pop'
                 }
             >
-                {quantity}
+                {formatNumberFa(quantity)}
             </span>
         </span>
     );

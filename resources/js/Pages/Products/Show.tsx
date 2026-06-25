@@ -2,9 +2,10 @@ import CartActionControls from '@/Components/CartActionControls';
 import { useOptimisticCart } from '@/hooks/useOptimisticCart';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import { PRODUCT_CARD_IMAGE_ASPECT_CLASS } from '@/constants/productImage';
+import { PRODUCT_CARD_IMAGE_ASPECT_CLASS, PRODUCT_SHOW_HERO_CLASS, PRODUCT_SHOW_IMAGE_CLASS, PRODUCT_SHOW_THUMBNAILS_CLASS } from '@/constants/productImage';
 import StorefrontLayout from '@/Layouts/StorefrontLayout';
 import { loginUrl } from '@/lib/auth';
+import { formatNumberFa, formatPrice } from '@/lib/format';
 
 interface Product {
     id: number;
@@ -48,7 +49,7 @@ interface ProductShowProps {
 }
 
 function Price({ amount }: PriceProps) {
-    return <span>﷼{Math.round(Number(amount)).toLocaleString()}</span>;
+    return <span>{formatPrice(amount)}</span>;
 }
 
 function uniqueValues(values: Array<string | null>): string[] {
@@ -90,7 +91,7 @@ function EcommerceZoom({ imageUrl, alt, imageClassName }: EcommerceZoomProps) {
             <button
                 type="button"
                 onClick={() => setIsOpen(true)}
-                className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
+                className="block w-full min-w-0 cursor-zoom-in border-0 bg-transparent p-0"
                 aria-label="نمایش تصویر محصول در اندازه کامل"
             >
                 <img src={imageUrl} alt={alt} loading="eager" decoding="async" fetchPriority="high" className={imageClassName} />
@@ -227,13 +228,13 @@ export default function ProductShow({ product, galleryImages, cartItems }: Produ
                 بازگشت به محصولات
             </Link>
 
-            <div className="mt-6 grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-                <section className="space-y-4">
-                    <div className="relative overflow-hidden rounded-3xl border border-[joordak-soft] bg-joordak-soft">
+            <div className="mt-6 grid min-w-0 gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start">
+                <section className="min-w-0 space-y-4">
+                    <div className={`${PRODUCT_SHOW_HERO_CLASS} rounded-3xl border border-[joordak-soft] bg-joordak-soft`}>
                         <EcommerceZoom
                             imageUrl={activeImage}
                             alt={product.title}
-                            imageClassName={`${PRODUCT_CARD_IMAGE_ASPECT_CLASS} w-full object-cover`}
+                            imageClassName={PRODUCT_SHOW_IMAGE_CLASS}
                         />
 
                         {images.length > 1 && (
@@ -259,7 +260,7 @@ export default function ProductShow({ product, galleryImages, cartItems }: Produ
                     </div>
 
                     {images.length > 1 && (
-                        <div className="flex gap-3 overflow-x-auto pb-2">
+                        <div className={PRODUCT_SHOW_THUMBNAILS_CLASS}>
                             {images.map((image, index) => (
                                 <button
                                     key={`${image}-${index}`}
@@ -302,7 +303,7 @@ export default function ProductShow({ product, galleryImages, cartItems }: Produ
                     </div>
 
                     <p className={`mt-4 text-sm font-semibold ${isOutOfStock ? 'text-red-600' : 'text-stone-600'}`}>
-                        {isOutOfStock ? 'ناموجود' : `موجودی: ${selectedSubProduct?.stock}`}
+                        {isOutOfStock ? 'ناموجود' : `موجودی: ${formatNumberFa(selectedSubProduct?.stock ?? 0)}`}
                     </p>
 
                     {(sizeOptions.length > 0 || colorOptions.length > 0) && (

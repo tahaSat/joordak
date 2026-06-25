@@ -2,6 +2,7 @@ import { SITE_LOGO_URL } from '@/Components/ApplicationLogo';
 import CartActionControls from '@/Components/CartActionControls';
 import { PRODUCT_CARD_IMAGE_ASPECT_CLASS } from '@/constants/productImage';
 import { loginUrl } from '@/lib/auth';
+import { formatNumberFa, formatPrice } from '@/lib/format';
 import { Link, usePage } from '@inertiajs/react';
 
 export interface ProductCardProduct {
@@ -34,7 +35,7 @@ interface ProductCardProps {
 }
 
 function Price({ amount }: { amount: string | number }) {
-    return <span>﷼{Math.round(Number(amount)).toLocaleString()}</span>;
+    return <span>{formatPrice(amount)}</span>;
 }
 
 export default function ProductCard({
@@ -108,12 +109,12 @@ export default function ProductCard({
                     }`}>
                         {product.size_count > 1 && (
                             <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
-                                {product.size_count} سایز
+                                {formatNumberFa(product.size_count)} سایز
                             </span>
                         )}
                         {product.color_count > 1 && (
                             <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
-                                {product.color_count} رنگ
+                                {formatNumberFa(product.color_count)} رنگ
                             </span>
                         )}
                     </div>

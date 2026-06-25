@@ -1,7 +1,11 @@
 import type { InvoiceStatus } from '@/types/admin';
 
+export function formatNumberFa(value: number | string): string {
+    return Math.round(Number(value)).toLocaleString('fa-IR');
+}
+
 export function formatPrice(amount: number | string): string {
-    return `﷼${Math.round(Number(amount)).toLocaleString()}`;
+    return `﷼${formatNumberFa(amount)}`;
 }
 
 export function formatDateFa(value?: string | null): string {
