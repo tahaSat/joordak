@@ -1,6 +1,6 @@
 import { SITE_LOGO_URL } from '@/Components/ApplicationLogo';
 import CartActionControls from '@/Components/CartActionControls';
-import { PRODUCT_IMAGE_ASPECT_CLASS } from '@/constants/productImage';
+import { PRODUCT_CARD_IMAGE_ASPECT_CLASS } from '@/constants/productImage';
 import { loginUrl } from '@/lib/auth';
 import { Link, usePage } from '@inertiajs/react';
 
@@ -58,7 +58,7 @@ export default function ProductCard({
         <article
             className={`group relative overflow-hidden border border-[joordak-soft] bg-white shadow-md shadow-slate-200/70 ${
                 isCompact
-                    ? 'w-[200px] shrink-0 rounded-2xl md:w-72 md:rounded-3xl'
+                    ? 'w-[180px] shrink-0 rounded-2xl md:w-52 md:rounded-2xl'
                     : 'rounded-xl'
             }`}
         >
@@ -76,66 +76,66 @@ export default function ProductCard({
                             alt={product.title}
                             loading="lazy"
                             decoding="async"
-                            className={`${PRODUCT_IMAGE_ASPECT_CLASS} w-full object-cover ${imageZoomClass}`}
+                            className={`${PRODUCT_CARD_IMAGE_ASPECT_CLASS} w-full object-cover ${imageZoomClass}`}
                         />
                     ) : isCompact ? (
-                        <div className={`${PRODUCT_IMAGE_ASPECT_CLASS} w-full bg-gradient-to-br from-[joordak-soft] via-white to-[joordak-gradient] ${imageZoomClass}`} />
+                        <div className={`${PRODUCT_CARD_IMAGE_ASPECT_CLASS} w-full bg-gradient-to-br from-[joordak-soft] via-white to-[joordak-gradient] ${imageZoomClass}`} />
                     ) : (
                         <img
                             src={SITE_LOGO_URL}
                             alt={product.title}
                             loading="lazy"
                             decoding="async"
-                            className={`${PRODUCT_IMAGE_ASPECT_CLASS} w-full object-cover ${imageZoomClass}`}
+                            className={`${PRODUCT_CARD_IMAGE_ASPECT_CLASS} w-full object-cover ${imageZoomClass}`}
                         />
                     )}
                 </div>
 
-                <div className={isCompact ? 'p-3 md:p-4' : 'p-3'}>
+                <div className={isCompact ? 'p-2.5 md:p-3' : 'p-2.5 md:p-2'}>
                     {showCategory && product.category && (
                         <p className="text-xs uppercase tracking-wider text-stone-500">{product.category.name}</p>
                     )}
                     {isCompact ? (
-                        <h3 className="min-h-[1.5em] truncate text-sm font-bold leading-[1.5] md:text-base">{product.title}</h3>
+                        <h3 className="truncate text-sm font-bold leading-snug">{product.title}</h3>
                     ) : (
-                        <h2 className="min-h-[1.5em] truncate text-sm font-semibold leading-[1.5]">{product.title}</h2>
+                        <h2 className="truncate text-sm font-semibold leading-snug">{product.title}</h2>
                     )}
 
-                    <div className={`mt-2 flex flex-wrap items-center text-stone-600 ${
+                    <div className={`mt-1 flex flex-wrap items-center text-stone-600 ${
                         isCompact
-                            ? 'min-h-[24px] gap-1.5 text-[11px] md:text-xs'
-                            : 'min-h-[28px] gap-2 text-xs'
+                            ? 'gap-1 text-[11px] md:text-xs'
+                            : 'gap-1.5 text-[11px] md:text-xs'
                     }`}>
                         {product.size_count > 1 && (
-                            <span className={`rounded-full bg-joordak-soft px-2 ${isCompact ? 'py-0.5' : 'py-1'}`}>
+                            <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
                                 {product.size_count} سایز
                             </span>
                         )}
                         {product.color_count > 1 && (
-                            <span className={`rounded-full bg-joordak-soft px-2 ${isCompact ? 'py-0.5' : 'py-1'}`}>
+                            <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
                                 {product.color_count} رنگ
                             </span>
                         )}
                     </div>
 
                     {product.has_discount && product.discounted_price != null ? (
-                        <div className={isCompact ? 'mt-2 md:mt-4' : 'mt-2'}>
-                            <p className="text-xs text-stone-400 line-through">
+                        <div className={isCompact ? 'mt-1.5 md:mt-2' : 'mt-1.5 md:mt-1'}>
+                            <p className="text-[11px] text-stone-400 line-through md:text-xs">
                                 <Price amount={product.price} />
                             </p>
-                            <p className={isCompact ? 'text-base font-bold text-rose-600 md:text-lg' : 'text-sm font-bold text-rose-600'}>
+                            <p className={isCompact ? 'text-sm font-bold text-rose-600 md:text-base' : 'text-sm font-bold text-rose-600'}>
                                 <Price amount={product.discounted_price} />
                             </p>
                         </div>
                     ) : (
-                        <p className={isCompact ? 'mt-2 text-base font-bold text-joordak-coral md:mt-4 md:text-lg' : 'mt-2 text-sm font-bold text-joordak-coral'}>
+                        <p className={isCompact ? 'mt-1.5 text-sm font-bold text-joordak-coral md:mt-2 md:text-base' : 'mt-1.5 text-sm font-bold text-joordak-coral md:mt-1'}>
                             <Price amount={product.price} />
                         </p>
                     )}
 
                     {isAuthenticated ? (
                         cartItem ? (
-                            <div className={`pointer-events-auto ${isCompact ? 'mt-2 md:mt-4' : 'mt-3'}`}>
+                            <div className={`pointer-events-auto ${isCompact ? 'mt-1.5 md:mt-2' : 'mt-2 md:mt-1.5'}`}>
                                 <CartActionControls
                                     quantity={cartItem.quantity}
                                     stock={product.stock}
@@ -151,8 +151,8 @@ export default function ProductCard({
                                 type="button"
                                 onClick={() => onAddToCart(product.sub_product_id)}
                                 disabled={!product.sub_product_id}
-                                className={`w-full cursor-pointer rounded-full border-none bg-joordak px-3 py-2.5 text-xs text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 pointer-events-auto ${
-                                    isCompact ? 'mt-2 font-bold md:mt-4 md:px-4 md:py-3 md:text-sm' : 'mt-3'
+                                className={`w-full cursor-pointer rounded-full border-none bg-joordak px-3 py-2 text-xs text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 pointer-events-auto ${
+                                    isCompact ? 'mt-1.5 font-bold md:mt-2' : 'mt-2 md:mt-1.5'
                                 }`}
                             >
                                 افزودن به سبد
@@ -163,8 +163,8 @@ export default function ProductCard({
                             href={loginUrl(url)}
                             className={`block rounded-full border text-center no-underline pointer-events-auto ${
                                 isCompact
-                                    ? 'mt-2 border-[#d6d6d6] px-3 py-2.5 text-[11px] md:mt-4 md:px-4 md:py-3 md:text-xs'
-                                    : 'mt-4 border-stone-300 px-4 py-3 text-sm hover:border-stone-500'
+                                    ? 'mt-1.5 border-[#d6d6d6] px-3 py-2 text-[11px] md:mt-2 md:text-xs'
+                                    : 'mt-2 border-stone-300 px-3 py-2 text-xs hover:border-stone-500 md:mt-1.5'
                             }`}
                         >
                             برای خرید وارد شوید
