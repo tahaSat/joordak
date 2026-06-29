@@ -16,6 +16,24 @@
             <link rel="preload" href="{{ data_get($page, 'props.heroImageUrl') }}" as="image" fetchpriority="high">
         @endif
 
+        @php
+            $structuredDataGraph = array_values(array_filter(array_merge(
+                data_get($page, 'props.structuredDataGlobal', []),
+                data_get($page, 'props.structuredData', []),
+            )));
+        @endphp
+        @if ($structuredDataGraph !== [])
+            @php
+                $structuredDataJson = json_encode([
+                    '@context' => 'https://schema.org',
+                    '@graph' => $structuredDataGraph,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            @endphp
+            <script type="application/ld+json">
+                {!! $structuredDataJson !!}
+            </script>
+        @endif
+
         <!-- Scripts -->
         @routes
         @viteReactRefresh

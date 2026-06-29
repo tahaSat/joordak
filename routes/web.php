@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\SlugController as AdminSlugController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\AboutUsController;
 use App\Http\Controllers\HomeBannerController;
 use App\Http\Controllers\PaymentHistoryController;
 use App\Http\Controllers\ProductController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\ZibalPaymentController;
 use App\Models\Category;
 use App\Models\Product;
+use App\Support\AboutUsSeo;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -29,12 +31,18 @@ Route::get('/', WelcomeController::class)->name('landing');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/about-us', [AboutUsController::class, 'show'])->name('about-us');
 Route::get('/home-banner/image', [HomeBannerController::class, 'image'])->name('home-banner.image');
+Route::get('/about-us-cover/image', [AboutUsController::class, 'coverImage'])->name('about-us-cover.image');
 Route::get('/sitemap.xml', function () {
+    $aboutLastmod = AboutUsSeo::contentLastModified();
+    $aboutPriority = AboutUsSeo::hasContent() ? '0.7' : '0.5';
+
     $urls = collect([
-        [route('landing'), now()],
-        [route('products.index'), now()],
-        [route('blog.index'), now()],
+        [route('landing'), now(), 'daily', '1.0'],
+        [route('products.index'), now(), 'daily', '0.9'],
+        [route('blog.index'), now(), 'weekly', '0.8'],
+        [route('about-us'), $aboutLastmod, AboutUsSeo::hasContent() ? 'monthly' : 'yearly', $aboutPriority],
     ]);
 
     Product::query()
@@ -43,6 +51,8 @@ Route::get('/sitemap.xml', function () {
         ->each(fn (Product $product) => $urls->push([
             route('products.show', $product->slug),
             $product->updated_at,
+            'weekly',
+            '0.8',
         ]));
 
     Category::query()
@@ -50,6 +60,8 @@ Route::get('/sitemap.xml', function () {
         ->each(fn (Category $category) => $urls->push([
             route('products.index', ['category' => $category->slug]),
             $category->updated_at,
+            'weekly',
+            '0.7',
         ]));
 
     $xml = view('sitemap', ['urls' => $urls])->render();
@@ -93,6 +105,9 @@ Route::prefix('admin')
         Route::post('/settings/image', [AdminSettingsController::class, 'upload'])->name('settings.image.store');
         Route::get('/settings/image/{uploadId}', [AdminSettingsController::class, 'uploadStatus'])->name('settings.image.show');
         Route::delete('/settings/image', [AdminSettingsController::class, 'delete'])->name('settings.image.destroy');
+        Route::post('/settings/about-cover', [AdminSettingsController::class, 'uploadAboutCover'])->name('settings.about-cover.store');
+        Route::get('/settings/about-cover/{uploadId}', [AdminSettingsController::class, 'aboutCoverUploadStatus'])->name('settings.about-cover.show');
+        Route::delete('/settings/about-cover', [AdminSettingsController::class, 'deleteAboutCover'])->name('settings.about-cover.destroy');
         Route::post('/settings', [AdminSettingsController::class, 'update'])->name('settings.update');
     });
 

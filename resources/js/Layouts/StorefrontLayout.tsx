@@ -215,6 +215,7 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
             { label: 'پروفایل', href: route('profile.edit') },
             { label: 'پرداخت‌ها', href: route('payment-history.index') },
         ] : []),
+        { label: 'درباره ی ما', href: route('about-us') },
     ];
 
     useEffect(() => {

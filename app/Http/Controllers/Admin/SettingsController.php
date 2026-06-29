@@ -22,17 +22,23 @@ class SettingsController extends Controller
         Gate::authorize('viewAny', Setting::class);
 
         $path = Setting::getValue('home_banner_path');
+        $aboutCoverPath = Setting::getValue('about_us_cover_path');
 
         return Inertia::render('Admin/Settings/Edit', [
             'banner' => [
                 'path' => $path,
                 'preview_url' => LiaraUrl::fromPath($path) ?? ($path ? route('home-banner.image') : null),
             ],
+            'about_cover' => [
+                'path' => $aboutCoverPath,
+                'preview_url' => LiaraUrl::fromPath($aboutCoverPath) ?? ($aboutCoverPath ? route('about-us-cover.image') : null),
+            ],
             'settings' => [
                 'post_cost_tehran' => Setting::getValue('post_cost_tehran', '0'),
                 'post_cost_others' => Setting::getValue('post_cost_others', '0'),
                 'hero_title' => Setting::getValue('hero_title', 'به جردک خوش آمدید'),
                 'hero_subtitle' => Setting::getValue('hero_subtitle', 'فروشگاه آنلاین مد و پوشاک'),
+                'about_us_description' => Setting::getValue('about_us_description', ''),
             ],
         ]);
     }
@@ -43,21 +49,29 @@ class SettingsController extends Controller
 
         $data = $request->validate([
             'path' => ['nullable', 'string', 'max:2048'],
+            'about_cover_path' => ['nullable', 'string', 'max:2048'],
             'post_cost_tehran' => ['required', 'integer', 'min:0'],
             'post_cost_others' => ['required', 'integer', 'min:0'],
             'hero_title' => ['required', 'string', 'max:255'],
             'hero_subtitle' => ['nullable', 'string', 'max:255'],
+            'about_us_description' => ['nullable', 'string', 'max:10000'],
         ]);
 
         if (filled($data['path'] ?? null)) {
             abort_unless($this->isBannerPath($data['path']), 422, 'Invalid banner path.');
         }
 
+        if (filled($data['about_cover_path'] ?? null)) {
+            abort_unless($this->isAboutCoverPath($data['about_cover_path']), 422, 'Invalid about cover path.');
+        }
+
         Setting::setValue('home_banner_path', $data['path'] ?? null);
+        Setting::setValue('about_us_cover_path', $data['about_cover_path'] ?? null);
         Setting::setValue('post_cost_tehran', (string) $data['post_cost_tehran']);
         Setting::setValue('post_cost_others', (string) $data['post_cost_others']);
         Setting::setValue('hero_title', $data['hero_title']);
         Setting::setValue('hero_subtitle', $data['hero_subtitle'] ?? null);
+        Setting::setValue('about_us_description', $data['about_us_description'] ?? null);
 
         return back()->with('status', 'تنظیمات به‌روزرسانی شد.');
     }
@@ -130,13 +144,91 @@ class SettingsController extends Controller
         return ['queued' => true];
     }
 
+    /**
+     * @return array{upload: array{id: string, status: string}}
+     */
+    public function uploadAboutCover(Request $request): array
+    {
+        Gate::authorize('update', Setting::class);
+
+        $data = $request->validate([
+            'cover' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $file = $data['cover'];
+        $uploadId = (string) Str::uuid();
+        $extension = $file->extension() ?: 'jpg';
+        $tempPath = $file->storeAs('admin-about-cover-uploads', "{$uploadId}.{$extension}", 'local');
+        $destinationPath = "about-us-covers/{$uploadId}.{$extension}";
+
+        abort_if($tempPath === false, 500, 'Unable to queue about cover upload.');
+
+        Cache::put($this->aboutCoverUploadCacheKey($uploadId), [
+            'status' => 'queued',
+        ], now()->addMinutes(30));
+
+        UploadProductImageToLiara::dispatch($uploadId, $tempPath, $destinationPath, 'admin-about-cover-upload');
+
+        return [
+            'upload' => ['id' => $uploadId, 'status' => 'queued'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function aboutCoverUploadStatus(string $uploadId): array
+    {
+        Gate::authorize('update', Setting::class);
+
+        abort_unless(Str::isUuid($uploadId), 404);
+
+        $status = Cache::get($this->aboutCoverUploadCacheKey($uploadId));
+
+        abort_unless(is_array($status), 404);
+
+        return $status;
+    }
+
+    /**
+     * @return array{queued: bool}
+     */
+    public function deleteAboutCover(Request $request): array
+    {
+        Gate::authorize('update', Setting::class);
+
+        $data = $request->validate([
+            'path' => ['required', 'string', 'max:2048'],
+        ]);
+
+        abort_unless($this->isAboutCoverPath($data['path']), 422, 'Invalid about cover path.');
+
+        if (Setting::getValue('about_us_cover_path') === $data['path']) {
+            Setting::setValue('about_us_cover_path', null);
+        }
+
+        DeleteLiaraFile::dispatch($data['path']);
+
+        return ['queued' => true];
+    }
+
     private function isBannerPath(string $path): bool
     {
         return str_starts_with($path, 'banners/') && ! str_contains($path, '..');
     }
 
+    private function isAboutCoverPath(string $path): bool
+    {
+        return str_starts_with($path, 'about-us-covers/') && ! str_contains($path, '..');
+    }
+
     private function uploadCacheKey(string $uploadId): string
     {
         return "admin-home-banner-upload:{$uploadId}";
+    }
+
+    private function aboutCoverUploadCacheKey(string $uploadId): string
+    {
+        return "admin-about-cover-upload:{$uploadId}";
     }
 }
