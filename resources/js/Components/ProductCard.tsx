@@ -55,9 +55,17 @@ export default function ProductCard({
 
     const imageZoomClass = 'transition-transform duration-500 ease-in-out group-hover:scale-110 group-has-[:active]:scale-110';
 
+    const hasDiscount = product.has_discount && product.discounted_price != null;
+    const priceMarginClass = isCompact ? 'mt-1.5 md:mt-2' : 'mt-1.5 md:mt-1';
+    const salePriceClass = isCompact
+        ? 'text-sm font-bold md:text-base'
+        : 'text-sm font-bold';
+    const cartActionsClass = isCompact ? 'pt-1.5 md:pt-2' : 'pt-2 md:pt-1.5';
+    const bodyPaddingClass = isCompact ? 'p-2.5 md:p-3' : 'p-2.5 md:p-2';
+
     return (
         <article
-            className={`group relative overflow-hidden border border-[joordak-soft] bg-white shadow-md shadow-slate-200/70 ${
+            className={`group relative flex h-full self-stretch flex-col overflow-hidden border border-[joordak-soft] bg-white shadow-md shadow-slate-200/70 ${
                 isCompact
                     ? 'w-[180px] shrink-0 rounded-2xl md:w-52 md:rounded-2xl'
                     : 'rounded-xl'
@@ -69,7 +77,7 @@ export default function ProductCard({
                 aria-label={product.title}
             />
 
-            <div className="relative z-[2] pointer-events-none">
+            <div className="relative z-[2] pointer-events-none flex flex-1 flex-col">
                 <div className="overflow-hidden">
                     {product.image_url ? (
                         <img
@@ -92,51 +100,47 @@ export default function ProductCard({
                     )}
                 </div>
 
-                <div className={isCompact ? 'p-2.5 md:p-3' : 'p-2.5 md:p-2'}>
-                    {showCategory && product.category && (
-                        <p className="text-xs uppercase tracking-wider text-stone-500">{product.category.name}</p>
-                    )}
-                    {isCompact ? (
-                        <h3 className="truncate text-sm font-bold leading-snug">{product.title}</h3>
-                    ) : (
-                        <h2 className="truncate text-sm font-semibold leading-snug">{product.title}</h2>
-                    )}
-
-                    <div className={`mt-1 flex flex-wrap items-center text-stone-600 ${
-                        isCompact
-                            ? 'gap-1 text-[11px] md:text-xs'
-                            : 'gap-1.5 text-[11px] md:text-xs'
-                    }`}>
-                        {product.size_count > 1 && (
-                            <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
-                                {formatNumberFa(product.size_count)} سایز
-                            </span>
+                <div className={`flex flex-1 flex-col ${bodyPaddingClass}`}>
+                    <div className="flex flex-1 flex-col">
+                        {showCategory && product.category && (
+                            <p className="text-xs uppercase tracking-wider text-stone-500">{product.category.name}</p>
                         )}
-                        {product.color_count > 1 && (
-                            <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
-                                {formatNumberFa(product.color_count)} رنگ
-                            </span>
+                        {isCompact ? (
+                            <h3 className="truncate text-sm font-bold leading-snug">{product.title}</h3>
+                        ) : (
+                            <h2 className="truncate text-sm font-semibold leading-snug">{product.title}</h2>
                         )}
-                    </div>
 
-                    {product.has_discount && product.discounted_price != null ? (
-                        <div className={isCompact ? 'mt-1.5 md:mt-2' : 'mt-1.5 md:mt-1'}>
-                            <p className="text-[11px] text-stone-400 line-through md:text-xs">
+                        <div className={`mt-1 flex min-h-6 flex-wrap items-center text-stone-600 ${
+                            isCompact
+                                ? 'gap-1 text-[11px] md:text-xs'
+                                : 'gap-1.5 text-[11px] md:text-xs'
+                        }`}>
+                            {product.size_count > 1 && (
+                                <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
+                                    {formatNumberFa(product.size_count)} سایز
+                                </span>
+                            )}
+                            {product.color_count > 1 && (
+                                <span className="rounded-full bg-joordak-soft px-1.5 py-0.5">
+                                    {formatNumberFa(product.color_count)} رنگ
+                                </span>
+                            )}
+                        </div>
+
+                        <div className={`${priceMarginClass} min-h-[2.5rem]`}>
+                            <p className={`text-[11px] text-stone-400 line-through md:text-xs ${hasDiscount ? '' : 'invisible'}`}>
                                 <Price amount={product.price} />
                             </p>
-                            <p className={isCompact ? 'text-sm font-bold text-rose-600 md:text-base' : 'text-sm font-bold text-rose-600'}>
-                                <Price amount={product.discounted_price} />
+                            <p className={`${salePriceClass} ${hasDiscount ? 'text-rose-600' : 'text-joordak-coral'}`}>
+                                <Price amount={hasDiscount ? product.discounted_price! : product.price} />
                             </p>
                         </div>
-                    ) : (
-                        <p className={isCompact ? 'mt-1.5 text-sm font-bold text-joordak-coral md:mt-2 md:text-base' : 'mt-1.5 text-sm font-bold text-joordak-coral md:mt-1'}>
-                            <Price amount={product.price} />
-                        </p>
-                    )}
+                    </div>
 
-                    {isAuthenticated ? (
-                        cartItem ? (
-                            <div className={`pointer-events-auto ${isCompact ? 'mt-1.5 md:mt-2' : 'mt-2 md:mt-1.5'}`}>
+                    <div className={`${cartActionsClass} pointer-events-auto`}>
+                        {isAuthenticated ? (
+                            cartItem ? (
                                 <CartActionControls
                                     quantity={cartItem.quantity}
                                     stock={product.stock}
@@ -146,31 +150,31 @@ export default function ProductCard({
                                     onIncrease={() => onIncreaseQuantity(product.sub_product_id)}
                                     onDecrease={() => onDecreaseQuantity(product.sub_product_id)}
                                 />
-                            </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => onAddToCart(product.sub_product_id)}
+                                    disabled={!product.sub_product_id}
+                                    className={`w-full cursor-pointer rounded-full border-none bg-joordak px-3 py-2 text-xs text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                        isCompact ? 'font-bold' : ''
+                                    }`}
+                                >
+                                    افزودن به سبد
+                                </button>
+                            )
                         ) : (
-                            <button
-                                type="button"
-                                onClick={() => onAddToCart(product.sub_product_id)}
-                                disabled={!product.sub_product_id}
-                                className={`w-full cursor-pointer rounded-full border-none bg-joordak px-3 py-2 text-xs text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 pointer-events-auto ${
-                                    isCompact ? 'mt-1.5 font-bold md:mt-2' : 'mt-2 md:mt-1.5'
+                            <Link
+                                href={loginUrl(url)}
+                                className={`block rounded-full border text-center no-underline ${
+                                    isCompact
+                                        ? 'border-[#d6d6d6] px-3 py-2 text-[11px] md:text-xs'
+                                        : 'border-stone-300 px-3 py-2 text-xs hover:border-stone-500'
                                 }`}
                             >
-                                افزودن به سبد
-                            </button>
-                        )
-                    ) : (
-                        <Link
-                            href={loginUrl(url)}
-                            className={`block rounded-full border text-center no-underline pointer-events-auto ${
-                                isCompact
-                                    ? 'mt-1.5 border-[#d6d6d6] px-3 py-2 text-[11px] md:mt-2 md:text-xs'
-                                    : 'mt-2 border-stone-300 px-3 py-2 text-xs hover:border-stone-500 md:mt-1.5'
-                            }`}
-                        >
-                            برای خرید وارد شوید
-                        </Link>
-                    )}
+                                برای خرید وارد شوید
+                            </Link>
+                        )}
+                    </div>
                 </div>
             </div>
         </article>

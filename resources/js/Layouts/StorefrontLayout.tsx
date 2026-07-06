@@ -70,9 +70,8 @@ const footerLinks: FooterLink[] = [
 ];
 const enamadUrl = siteConfig.enamad.url;
 const enamadLogoUrl = siteConfig.enamad.logoUrl;
-// const zibalTrustScriptUrl = 'https://zibal.ir/trust/scripts/zibal-trust-v4.js';
+const zibalTrustScriptUrl = 'https://zibal.ir/trust/scripts/zibal-trust-v4.js';
 
-/*
 function ZibalTrustBadge() {
     const containerRef = useRef<HTMLDivElement>(null);
     const [shouldLoad, setShouldLoad] = useState(false);
@@ -127,7 +126,6 @@ function ZibalTrustBadge() {
         />
     );
 }
-*/
 
 function LazyEnamadBadge() {
     const containerRef = useRef<HTMLAnchorElement>(null);
@@ -431,7 +429,7 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                         </div>
 
                         <div className="flex items-center gap-4 self-center lg:self-auto" dir="ltr">
-                            {/* <ZibalTrustBadge /> */}
+                            <ZibalTrustBadge />
                             <LazyEnamadBadge />
                         </div>
 

@@ -12,7 +12,7 @@ class CancelStalePendingInvoices
 {
     use Queueable;
 
-    private const STALE_AFTER_HOURS = 24;
+    private const STALE_AFTER_HOURS = 8;
 
     public function handle(): int
     {

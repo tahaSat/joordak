@@ -85,8 +85,40 @@ export default function Welcome({ featuredProducts, categories, cartItems, heroI
                 </div>
             </section>
 
+            <section style={{ marginBottom: '40px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px', fontWeight: 'bold' }}>
+                    <h2>محصولات</h2>
+                </div>
+                <div className="flex items-stretch gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:thin] md:gap-4">
+                    {featuredProducts.map((product) => (
+                        <ProductCard
+                            key={product.id}
+                            product={product}
+                            cartItems={optimisticCartItems}
+                            isAuthenticated={Boolean(auth.user)}
+                            onAddToCart={addToCart}
+                            onIncreaseQuantity={increaseQuantity}
+                            onDecreaseQuantity={decreaseQuantity}
+                            isCartActionPending={isPending}
+                            variant="compact"
+                        />
+                    ))}
+                    <Link
+                        href={route('products.index')}
+                        className="flex shrink-0 self-stretch flex-col items-center justify-center gap-2 px-3 font-bold text-joordak-coral no-underline transition-transform duration-300 ease-in-out hover:scale-105 md:gap-3 md:px-4"
+                    >
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-joordak text-white md:h-12 md:w-12">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 md:h-6 md:w-6">
+                                <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                        </span>
+                        <span className="text-sm">مشاهده بیشتر</span>
+                    </Link>
+                </div>
+            </section>
+
             {categories.length > 0 && (
-                <section style={{ marginBottom: '40px' }}>
+                <section style={{ marginBottom: '90px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px', fontWeight: 'bold' }}>
                         <h2>دسته بندی ها</h2>
                     </div>
@@ -120,38 +152,6 @@ export default function Welcome({ featuredProducts, categories, cartItems, heroI
                     </div>
                 </section>
             )}
-
-            <section style={{ marginBottom: '90px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px', fontWeight: 'bold' }}>
-                    <h2>محصولات</h2>
-                </div>
-                <div className="flex gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:thin] md:gap-4">
-                    {featuredProducts.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            product={product}
-                            cartItems={optimisticCartItems}
-                            isAuthenticated={Boolean(auth.user)}
-                            onAddToCart={addToCart}
-                            onIncreaseQuantity={increaseQuantity}
-                            onDecreaseQuantity={decreaseQuantity}
-                            isCartActionPending={isPending}
-                            variant="compact"
-                        />
-                    ))}
-                    <Link
-                        href={route('products.index')}
-                        className="flex shrink-0 self-stretch flex-col items-center justify-center gap-2 px-3 font-bold text-joordak-coral no-underline transition-transform duration-300 ease-in-out hover:scale-105 md:gap-3 md:px-4"
-                    >
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-joordak text-white md:h-12 md:w-12">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 md:h-6 md:w-6">
-                                <path d="M15 18l-6-6 6-6" />
-                            </svg>
-                        </span>
-                        <span className="text-sm">مشاهده بیشتر</span>
-                    </Link>
-                </div>
-            </section>
         </StorefrontLayout>
     );
 }

@@ -11,7 +11,7 @@ class CancelStalePendingInvoicesCommand extends Command
 
     protected $signature = 'invoices:cancel-stale-pending {--watch : Run continuously, every day}';
 
-    protected $description = 'Cancel pending or processing-payment invoices older than 24 hours';
+    protected $description = 'Cancel pending or processing-payment invoices older than 8 hours';
 
     public function handle(CancelStalePendingInvoices $job): int
     {

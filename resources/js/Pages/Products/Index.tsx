@@ -186,18 +186,19 @@ export default function ProductsIndex({ products, categories, cartItems, selecte
                 </div>
             )}
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 items-stretch gap-3 sm:gap-4 md:grid-cols-4">
                 {productList.map((product) => (
-                    <ProductCard
-                        key={product.id}
-                        product={product}
-                        cartItems={optimisticCartItems}
-                        isAuthenticated={Boolean(auth.user)}
-                        onAddToCart={addToCart}
-                        onIncreaseQuantity={increaseQuantity}
-                        onDecreaseQuantity={decreaseQuantity}
-                        isCartActionPending={isPending}
-                    />
+                    <div key={product.id} className="flex min-h-0 flex-col">
+                        <ProductCard
+                            product={product}
+                            cartItems={optimisticCartItems}
+                            isAuthenticated={Boolean(auth.user)}
+                            onAddToCart={addToCart}
+                            onIncreaseQuantity={increaseQuantity}
+                            onDecreaseQuantity={decreaseQuantity}
+                            isCartActionPending={isPending}
+                        />
+                    </div>
                 ))}
             </div>
 

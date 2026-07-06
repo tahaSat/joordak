@@ -85,7 +85,7 @@ class CheckoutController extends Controller
 
         $request->session()->forget(DiscountService::CART_SESSION_KEY);
 
-        return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice created. Payment integration is pending.');
+        return redirect()->route('invoices.show', $invoice)->with('success', 'فاکتور ایجاد شد. برای پرداخت از دکمه پرداخت استفاده کنید.');
     }
 
     private function shippingCostForProvince(?string $province): int
