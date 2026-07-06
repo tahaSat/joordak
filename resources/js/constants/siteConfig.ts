@@ -8,7 +8,7 @@ export const siteConfig = {
     social: {
         instagram: { href: '#', label: '@joordak' },
         telegram: { href: '#', label: 't.me/joordak' },
-        support: { href: '#', label: 't.me/joordakadmin' },
+        support: { href: 'https://t.me/Khode_mhd1', label: 't.me/Khode_mhd1' },
         bale: { href: '#', label: 'ble.ir/joordak' },
     },
     enamad: {
