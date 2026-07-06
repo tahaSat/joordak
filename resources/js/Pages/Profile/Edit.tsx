@@ -1,4 +1,5 @@
 import StorefrontLayout from '@/Layouts/StorefrontLayout';
+import { actionButtonClassName } from '@/constants/siteConfig';
 import { iranProvinces } from '@/constants/iranProvinces';
 import type { PageProps } from '@/types';
 import { Transition } from '@headlessui/react';
@@ -134,7 +135,7 @@ export default function Edit() {
                                 <button
                                     type="submit"
                                     disabled={profileForm.processing}
-                                    style={{ backgroundColor: 'joordak-coral', color: 'white', padding: '8px 16px', borderRadius: '9999px', fontWeight: '500', cursor: profileForm.processing ? 'not-allowed' : 'pointer', opacity: profileForm.processing ? 0.5 : 1 }}
+                                    className={`${actionButtonClassName} disabled:cursor-not-allowed disabled:opacity-50`}
                                 >
                                     ذخیره
                                 </button>
