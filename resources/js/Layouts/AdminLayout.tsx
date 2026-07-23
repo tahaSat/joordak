@@ -4,6 +4,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import {
     IconArticle,
     IconCategory,
+    IconChartBar,
     IconDiscount2,
     IconHomeStats,
     IconPackage,
@@ -33,6 +34,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { label: 'داشبورد', routeName: 'admin.dashboard', icon: IconHomeStats },
+    { label: 'آمار', routeName: 'admin.stats', icon: IconChartBar },
     { label: 'سفارشات', routeName: 'admin.invoices.index', icon: IconReceipt },
     { label: 'محصولات', routeName: 'admin.products.index', icon: IconPackage },
     { label: 'دسته‌بندی‌ها', routeName: 'admin.categories.index', icon: IconCategory },

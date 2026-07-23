@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\SlugController as AdminSlugController;
+use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AboutUsController;
 use App\Http\Controllers\HomeBannerController;
@@ -78,6 +79,7 @@ Route::prefix('admin')
     ->middleware(['auth', 'verified', 'admin'])
     ->group(function () {
         Route::get('/', AdminDashboardController::class)->name('dashboard');
+        Route::get('/stats', AdminStatsController::class)->name('stats');
         Route::post('/slugs', AdminSlugController::class)->name('slugs.store');
 
         Route::post('/products/images', [AdminProductController::class, 'uploadImages'])->name('products.images.store');
