@@ -9,6 +9,7 @@ enum PaymentStatus: string
     case Paid = 'paid';
     case Failed = 'failed';
     case Cancelled = 'cancelled';
+    case Expired = 'expired';
 
     public function labelFa(): string
     {
@@ -18,6 +19,7 @@ enum PaymentStatus: string
             self::Paid => 'پرداخت شده',
             self::Failed => 'ناموفق',
             self::Cancelled => 'لغو شده',
+            self::Expired => 'منقضی شده',
         };
     }
 

@@ -109,6 +109,35 @@ class PaymentLifecycleService
         });
     }
 
+    public function markExpired(Payment $payment, string $message = 'Payment session expired.', ?array $verifyPayload = null, ?array $inquiryPayload = null): Payment
+    {
+        return DB::transaction(function () use ($payment, $message, $verifyPayload, $inquiryPayload) {
+            $payment = Payment::query()->with('invoice')->lockForUpdate()->findOrFail($payment->id);
+
+            if ($payment->status === PaymentStatus::Paid) {
+                return $payment->refresh();
+            }
+
+            $payment->forceFill([
+                'status' => PaymentStatus::Expired,
+                'verify_payload' => $verifyPayload ?? $payment->verify_payload,
+                'inquiry_payload' => $inquiryPayload ?? $payment->inquiry_payload,
+                'failed_at' => $payment->failed_at ?? now(),
+                'last_checked_at' => now(),
+                'failure_message' => $message,
+            ])->save();
+
+            if ($payment->invoice->status !== InvoiceStatus::Paid) {
+                $payment->invoice->forceFill([
+                    'status' => InvoiceStatus::Cancelled,
+                    'payment_reference' => $payment->gateway_track_id,
+                ])->save();
+            }
+
+            return $payment->refresh();
+        });
+    }
+
     private function deductInvoiceStock(Invoice $invoice): void
     {
         $invoice->items

@@ -51,6 +51,7 @@ function getPaymentStatusLabel(status: string): string {
         paid: 'پرداخت شده',
         failed: 'ناموفق',
         cancelled: 'لغو شده',
+        expired: 'منقضی شده',
     };
 
     return statusMap[status] ?? invoiceStatusLabel(status);

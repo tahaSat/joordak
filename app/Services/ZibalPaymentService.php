@@ -31,7 +31,7 @@ class ZibalPaymentService
     {
         return $this->post('/verify', [
             'merchant' => $this->merchant(),
-            'trackId' => $trackId,
+            'trackId' => (int) $trackId,
         ]);
     }
 
@@ -39,7 +39,7 @@ class ZibalPaymentService
     {
         return $this->post('/v1/inquiry', [
             'merchant' => $this->merchant(),
-            'trackId' => $trackId,
+            'trackId' => (int) $trackId,
         ]);
     }
 

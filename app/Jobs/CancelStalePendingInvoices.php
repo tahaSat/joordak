@@ -47,7 +47,12 @@ class CancelStalePendingInvoices
                                 PaymentStatus::Pending->value,
                                 PaymentStatus::Processing->value,
                             ])
-                            ->update(['status' => PaymentStatus::Cancelled->value]);
+                            ->update([
+                                'status' => PaymentStatus::Expired->value,
+                                'failed_at' => now(),
+                                'last_checked_at' => now(),
+                                'failure_message' => 'Payment session expired by stale invoice cleanup.',
+                            ]);
 
                         return true;
                     });
