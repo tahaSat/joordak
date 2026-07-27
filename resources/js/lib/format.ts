@@ -44,7 +44,11 @@ export function invoiceStatusClass(status: InvoiceStatus | string): string {
         return 'bg-sky-100 text-sky-800';
     }
 
-    if (status === 'failed' || status === 'cancelled') {
+    if (status === 'failed') {
+        return 'bg-purple-100 text-purple-800';
+    }
+
+    if (status === 'cancelled') {
         return 'bg-rose-100 text-rose-800';
     }
 
@@ -69,7 +73,7 @@ export function invoiceStatusClassStorefront(status: InvoiceStatus | string): st
     }
 
     if (status === 'failed') {
-        return 'bg-red-100 text-red-800';
+        return 'bg-purple-100 text-purple-800';
     }
 
     if (status === 'cancelled') {

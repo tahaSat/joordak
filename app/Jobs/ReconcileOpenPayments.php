@@ -72,26 +72,6 @@ class ReconcileOpenPayments
         if (filled($payment->gateway_track_id)) {
             try {
                 $verify = $zibal->verify((string) $payment->gateway_track_id);
-
-                if ($zibal->isSuccessfulVerification($verify) && $zibal->amountMatches($payment, $verify)) {
-                    $lifecycle->markPaid($payment, $verify);
-
-                    Log::info('ReconcileOpenPayments verified payment', [
-                        'payment_id' => $payment->id,
-                        'invoice_id' => $payment->invoice_id,
-                        'track_id' => $payment->gateway_track_id,
-                    ]);
-
-                    return 'verified';
-                }
-
-                $lifecycle->markExpired(
-                    $payment,
-                    $verify['message'] ?? 'Payment session expired after unsuccessful verification.',
-                    $verify,
-                );
-
-                return 'expired';
             } catch (Throwable $exception) {
                 report($exception);
 
@@ -102,6 +82,38 @@ class ReconcileOpenPayments
 
                 return 'expired';
             }
+
+            if ($zibal->isSuccessfulVerification($verify) && $zibal->amountMatches($payment, $verify)) {
+                try {
+                    $lifecycle->markPaid($payment, $verify);
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    Log::error('ReconcileOpenPayments could not finalize verified payment', [
+                        'payment_id' => $payment->id,
+                        'invoice_id' => $payment->invoice_id,
+                        'message' => $exception->getMessage(),
+                    ]);
+
+                    return null;
+                }
+
+                Log::info('ReconcileOpenPayments verified payment', [
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $payment->invoice_id,
+                    'track_id' => $payment->gateway_track_id,
+                ]);
+
+                return 'verified';
+            }
+
+            $lifecycle->markExpired(
+                $payment,
+                $verify['message'] ?? 'Payment session expired after unsuccessful verification.',
+                $verify,
+            );
+
+            return 'expired';
         }
 
         $lifecycle->markExpired($payment, 'Payment session expired before gateway track was created.');

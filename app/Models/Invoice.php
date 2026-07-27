@@ -21,6 +21,7 @@ class Invoice extends Model
         'discount_code',
         'invoice_discount_amount',
         'shipping_cost',
+        'address_province',
         'address',
         'postal_code',
         'status',

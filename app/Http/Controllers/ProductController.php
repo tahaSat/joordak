@@ -95,8 +95,7 @@ class ProductController extends Controller
     private function serializeProductCard(Product $product): array
     {
         $product->loadMissing(['category', 'subProducts']);
-        $subProduct = $product->subProducts->first(fn (SubProduct $variant): bool => $variant->hasActiveDiscount())
-            ?? $product->subProducts->first();
+        $subProduct = $product->preferredSubProduct();
         $sizeCount = $product->subProducts->pluck('size')->filter()->unique()->count();
         $colorCount = $product->subProducts->pluck('color_name')->filter()->unique()->count();
 

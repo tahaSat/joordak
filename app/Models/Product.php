@@ -53,10 +53,34 @@ class Product extends Model
      * @param Builder<Product> $query
      * @return Builder<Product>
      */
+    public function scopeHasStock(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'subProducts',
+            fn (Builder $subProductQuery) => $subProductQuery->where('stock', '>', 0)
+        );
+    }
+
+    /**
+     * @param Builder<Product> $query
+     * @return Builder<Product>
+     */
     public function scopeInStockFirst(Builder $query): Builder
     {
         return $query->orderByRaw(
             'CASE WHEN EXISTS (SELECT 1 FROM sub_products WHERE sub_products.product_id = products.id AND sub_products.stock > 0) THEN 0 ELSE 1 END'
         );
+    }
+
+    public function preferredSubProduct(): ?SubProduct
+    {
+        $this->loadMissing('subProducts');
+
+        return $this->subProducts->first(
+            fn (SubProduct $variant): bool => $variant->stock > 0 && $variant->hasActiveDiscount()
+        )
+            ?? $this->subProducts->first(fn (SubProduct $variant): bool => $variant->stock > 0)
+            ?? $this->subProducts->first(fn (SubProduct $variant): bool => $variant->hasActiveDiscount())
+            ?? $this->subProducts->first();
     }
 }

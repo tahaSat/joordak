@@ -27,7 +27,7 @@ function Price({ amount }: { amount: number }) {
     return <span>﷼{Math.round(Number(amount)).toLocaleString()}</span>;
 }
 
-export default function ZibalProcess({ invoice }: { invoice: Invoice }) {
+export default function ZibalProcess({ invoice, quote }: { invoice: Invoice; quote: string }) {
     const [payment, setPayment] = useState<Payment | null>(invoice.latest_payment);
     const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -43,6 +43,7 @@ export default function ZibalProcess({ invoice }: { invoice: Invoice }) {
             try {
                 const { data } = await window.axios.post<StartPaymentResponse>(
                     route('invoices.pay.start', invoice.id),
+                    { quote },
                 );
 
                 if (cancelled) {
@@ -77,7 +78,7 @@ export default function ZibalProcess({ invoice }: { invoice: Invoice }) {
         return () => {
             cancelled = true;
         };
-    }, [invoice.id]);
+    }, [invoice.id, quote]);
 
     return (
         <StorefrontLayout title={`پرداخت فاکتور #${invoice.id}`} seo={{ noIndex: true }}>

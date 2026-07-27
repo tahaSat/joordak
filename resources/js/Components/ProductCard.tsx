@@ -52,6 +52,7 @@ export default function ProductCard({
     const { url } = usePage();
     const isCompact = variant === 'compact';
     const cartItem = product.sub_product_id ? cartItems[product.sub_product_id] : undefined;
+    const isOutOfStock = !product.sub_product_id || product.stock <= 0;
 
     const imageZoomClass = 'transition-transform duration-500 ease-in-out group-hover:scale-110 group-has-[:active]:scale-110';
 
@@ -139,7 +140,15 @@ export default function ProductCard({
                     </div>
 
                     <div className={`${cartActionsClass} pointer-events-auto`}>
-                        {isAuthenticated ? (
+                        {isOutOfStock && !cartItem ? (
+                            <p
+                                className={`w-full rounded-full bg-stone-100 px-3 py-2 text-center text-xs font-semibold text-red-600 ${
+                                    isCompact ? 'font-bold' : ''
+                                }`}
+                            >
+                                ناموجود
+                            </p>
+                        ) : isAuthenticated ? (
                             cartItem ? (
                                 <CartActionControls
                                     quantity={cartItem.quantity}

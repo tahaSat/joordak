@@ -7,12 +7,43 @@ import { FormEvent, useEffect, useState } from 'react';
 
 interface InvoiceItem {
     id: number;
+    sub_product_id: number | null;
     product_name: string;
     unit_price: number;
     original_unit_price: number;
     product_discount_amount: number;
     quantity: number;
     line_total: number;
+    current_stock: number;
+    product_is_active: boolean;
+}
+
+interface StockFailure {
+    invoice_item_id: number;
+    product_name: string;
+    requested: number;
+    available: number;
+    reason: string;
+}
+
+interface MoneyDifference {
+    old: number;
+    new: number;
+}
+
+interface PreparePaymentResponse {
+    ok: boolean;
+    changed: boolean;
+    quote: string;
+    message?: string;
+    stock_failures: StockFailure[];
+    differences: {
+        items: Array<{ old: InvoiceItem | null; new: InvoiceItem }>;
+        discount: MoneyDifference & { old_code: string | null; new_code: string | null };
+        shipping: MoneyDifference;
+        subtotal: MoneyDifference;
+        total: MoneyDifference;
+    };
 }
 
 interface Payment {
@@ -60,12 +91,26 @@ function getPaymentStatusLabel(status: string): string {
 export default function InvoiceShow({ invoice }: { invoice: Invoice }) {
     const { flash, errors } = usePage<PageProps & { errors: Record<string, string> }>().props;
     const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+    const [stockFailures, setStockFailures] = useState<StockFailure[]>([]);
+    const [priceChanges, setPriceChanges] = useState<PreparePaymentResponse | null>(null);
+    const [preparingPayment, setPreparingPayment] = useState(false);
+    const [prepareError, setPrepareError] = useState<string | null>(null);
+    const [updatingItemId, setUpdatingItemId] = useState<number | null>(null);
+    const [pendingRemoval, setPendingRemoval] = useState<InvoiceItem | null>(null);
     const latestPayment = invoice.latest_payment;
     const isPaid = invoice.status === 'paid' || latestPayment?.status === 'paid';
     const canPay = invoiceCanBePaid(invoice.status) && !isPaid;
+    const canEdit = invoice.status === 'pending_payment' && latestPayment?.status !== 'processing';
     const couponForm = useForm({ code: '' });
     const productDiscountTotal = invoice.items.reduce((sum, item) => sum + (item.product_discount_amount ?? 0), 0);
     const grossSubtotal = invoice.subtotal + productDiscountTotal;
+    const variantRequestedTotals = invoice.items.reduce((totals, item) => {
+        if (item.sub_product_id !== null) {
+            totals.set(item.sub_product_id, (totals.get(item.sub_product_id) ?? 0) + item.quantity);
+        }
+
+        return totals;
+    }, new Map<number, number>());
 
     const applyCoupon = (event: FormEvent) => {
         event.preventDefault();
@@ -77,6 +122,91 @@ export default function InvoiceShow({ invoice }: { invoice: Invoice }) {
 
     const removeCoupon = () => {
         router.delete(route('invoices.discount.destroy', invoice.id), { preserveScroll: true });
+    };
+
+    const updateQuantity = (item: InvoiceItem, quantity: number) => {
+        if (quantity < 1 || quantity > 20 || updatingItemId !== null) {
+            return;
+        }
+
+        setUpdatingItemId(item.id);
+        router.patch(
+            route('invoices.items.update', { invoice: invoice.id, invoiceItem: item.id }),
+            { quantity },
+            {
+                preserveScroll: true,
+                onFinish: () => setUpdatingItemId(null),
+            },
+        );
+    };
+
+    const requestDecrease = (item: InvoiceItem) => {
+        if (item.quantity === 1) {
+            setPendingRemoval(item);
+            return;
+        }
+
+        updateQuantity(item, item.quantity - 1);
+    };
+
+    const confirmRemoval = () => {
+        if (!pendingRemoval) {
+            return;
+        }
+
+        const item = pendingRemoval;
+        const isOnlyItem = invoice.items.length === 1;
+        setPendingRemoval(null);
+
+        if (isOnlyItem) {
+            router.delete(route('invoices.destroy', invoice.id));
+            return;
+        }
+
+        router.delete(
+            route('invoices.items.destroy', { invoice: invoice.id, invoiceItem: item.id }),
+            { preserveScroll: true },
+        );
+    };
+
+    const continueToPayment = (quote: string) => {
+        window.location.href = `${route('invoices.pay', invoice.id)}?quote=${encodeURIComponent(quote)}`;
+    };
+
+    const preparePayment = async () => {
+        setPreparingPayment(true);
+        setPrepareError(null);
+
+        try {
+            const { data } = await window.axios.post<PreparePaymentResponse>(
+                route('invoices.prepare-payment', invoice.id),
+            );
+
+            if (data.stock_failures.length > 0) {
+                setStockFailures(data.stock_failures);
+            } else if (data.changed) {
+                setPriceChanges(data);
+            } else {
+                continueToPayment(data.quote);
+            }
+        } catch (error) {
+            const response = (error as { response?: { data?: Partial<PreparePaymentResponse> } }).response;
+            const failures = response?.data?.stock_failures ?? [];
+
+            if (failures.length > 0) {
+                setStockFailures(failures);
+            } else {
+                setPrepareError(response?.data?.message ?? 'امکان آماده‌سازی پرداخت وجود ندارد. لطفاً دوباره تلاش کنید.');
+            }
+        } finally {
+            setPreparingPayment(false);
+        }
+    };
+
+    const closeRefreshModal = () => {
+        setStockFailures([]);
+        setPriceChanges(null);
+        router.reload({ only: ['invoice'] });
     };
 
     useEffect(() => {
@@ -109,6 +239,92 @@ export default function InvoiceShow({ invoice }: { invoice: Invoice }) {
                     </button>
                 </div>
             </Modal>
+            <Modal show={pendingRemoval !== null} onClose={() => setPendingRemoval(null)} maxWidth="md">
+                {pendingRemoval && (
+                    <div className="p-6">
+                        <h2 className="text-xl font-black text-slate-900">
+                            {invoice.items.length === 1 ? 'حذف فاکتور' : 'حذف کالا'}
+                        </h2>
+                        <p className="mt-3 text-sm leading-7 text-slate-600">
+                            {invoice.items.length === 1
+                                ? 'این تنها قلم فاکتور است. با ادامه، فاکتور برای همیشه حذف می‌شود.'
+                                : `${pendingRemoval.product_name} از فاکتور حذف شود؟`}
+                        </p>
+                        <div className="mt-6 flex gap-3">
+                            <button type="button" onClick={confirmRemoval} className="rounded-full bg-red-600 px-5 py-2.5 font-bold text-white hover:bg-red-700">
+                                تأیید حذف
+                            </button>
+                            <button type="button" onClick={() => setPendingRemoval(null)} className="rounded-full border border-stone-300 px-5 py-2.5">
+                                انصراف
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+            <Modal show={stockFailures.length > 0} onClose={closeRefreshModal} maxWidth="md">
+                <div className="p-6">
+                    <h2 className="text-xl font-black text-slate-900">موجودی کافی نیست</h2>
+                    <p className="mt-2 text-sm text-slate-600">پیش از پرداخت، تعداد اقلام زیر را اصلاح کنید.</p>
+                    <div className="mt-4 space-y-3">
+                        {stockFailures.map((failure) => (
+                            <div key={failure.invoice_item_id} className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm">
+                                <p className="font-bold text-red-900">{failure.product_name}</p>
+                                <p className="mt-1 text-red-700">
+                                    تعداد درخواستی: {failure.requested} — موجودی: {failure.available}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                    <button type="button" onClick={closeRefreshModal} className="mt-5 rounded-full bg-stone-900 px-5 py-2 text-white">
+                        متوجه شدم
+                    </button>
+                </div>
+            </Modal>
+            <Modal show={priceChanges !== null} onClose={closeRefreshModal} maxWidth="lg">
+                {priceChanges && (
+                    <div className="p-6">
+                        <h2 className="text-xl font-black text-slate-900">تغییرات فاکتور</h2>
+                        <p className="mt-2 text-sm leading-7 text-slate-600">
+                            قیمت‌ها، تخفیف‌ها و هزینه ارسال با اطلاعات فعلی فروشگاه به‌روزرسانی شدند.
+                        </p>
+                        <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
+                            {priceChanges.differences.items.map(({ old, new: newItem }) => (
+                                <div key={newItem.id} className="flex justify-between gap-4">
+                                    <span>{newItem.product_name}</span>
+                                    <span>
+                                        {old && <span className="ml-2 text-stone-400 line-through"><Price amount={old.line_total} /></span>}
+                                        <span className="font-bold"><Price amount={newItem.line_total} /></span>
+                                    </span>
+                                </div>
+                            ))}
+                            {priceChanges.differences.discount.old !== priceChanges.differences.discount.new && (
+                                <div className="flex justify-between text-rose-700">
+                                    <span>تخفیف کد</span>
+                                    <span><Price amount={priceChanges.differences.discount.old} /> ← <Price amount={priceChanges.differences.discount.new} /></span>
+                                </div>
+                            )}
+                            {priceChanges.differences.shipping.old !== priceChanges.differences.shipping.new && (
+                                <div className="flex justify-between">
+                                    <span>هزینه ارسال</span>
+                                    <span><Price amount={priceChanges.differences.shipping.old} /> ← <Price amount={priceChanges.differences.shipping.new} /></span>
+                                </div>
+                            )}
+                            <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-black">
+                                <span>مبلغ نهایی</span>
+                                <span><Price amount={priceChanges.differences.total.old} /> ← <Price amount={priceChanges.differences.total.new} /></span>
+                            </div>
+                        </div>
+                        <div className="mt-5 flex gap-3">
+                            <button type="button" onClick={() => continueToPayment(priceChanges.quote)} className="rounded-full bg-emerald-600 px-5 py-2.5 font-bold text-white">
+                                تأیید و ادامه پرداخت
+                            </button>
+                            <button type="button" onClick={closeRefreshModal} className="rounded-full border border-stone-300 px-5 py-2.5">
+                                انصراف
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
             <h1 className="text-3xl font-black">فاکتور #{invoice.id}</h1>
             <p className="mt-2 text-stone-600">
                 وضعیت:{' '}
@@ -130,7 +346,7 @@ export default function InvoiceShow({ invoice }: { invoice: Invoice }) {
                 <div className="mt-4 divide-y divide-stone-200">
                     {invoice.items.map((item) => (
                         <div key={item.id} className="flex items-center justify-between py-3 text-sm">
-                            <div>
+                            <div className="min-w-0">
                                 <p className="font-medium">{item.product_name}</p>
                                 <p className="text-stone-500">
                                     {item.quantity} x{' '}
@@ -143,6 +359,39 @@ export default function InvoiceShow({ invoice }: { invoice: Invoice }) {
                                         <Price amount={item.unit_price} />
                                     )}
                                 </p>
+                                <p className={`mt-1 text-xs ${item.product_is_active ? 'text-stone-500' : 'font-bold text-red-600'}`}>
+                                    {item.product_is_active ? `موجودی فعلی: ${item.current_stock}` : 'این محصول دیگر قابل فروش نیست'}
+                                </p>
+                                {canEdit && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => requestDecrease(item)}
+                                            disabled={updatingItemId === item.id}
+                                            className="h-8 w-8 rounded-full border border-stone-300 font-bold disabled:opacity-40"
+                                        >
+                                            −
+                                        </button>
+                                        <span className="min-w-6 text-center font-bold">{item.quantity}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateQuantity(item, item.quantity + 1)}
+                                            disabled={
+                                                !item.product_is_active
+                                                || item.quantity >= Math.min(item.current_stock, 20)
+                                                || (item.sub_product_id !== null
+                                                    && (variantRequestedTotals.get(item.sub_product_id) ?? 0) >= item.current_stock)
+                                                || updatingItemId === item.id
+                                            }
+                                            className="h-8 w-8 rounded-full border border-stone-300 font-bold disabled:opacity-40"
+                                        >
+                                            +
+                                        </button>
+                                        <button type="button" onClick={() => setPendingRemoval(item)} className="mr-2 text-xs font-bold text-red-600 hover:text-red-800">
+                                            حذف
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             <p className="font-semibold"><Price amount={item.line_total} /></p>
                         </div>
@@ -223,14 +472,22 @@ export default function InvoiceShow({ invoice }: { invoice: Invoice }) {
                     </div>
 
                     {canPay && (
-                        <Link
-                            href={route('invoices.pay', invoice.id)}
+                        <button
+                            type="button"
+                            onClick={preparePayment}
+                            disabled={preparingPayment}
                             className="rounded-full bg-emerald-600 px-5 py-2.5 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
                         >
-                            پرداخت
-                        </Link>
+                            {preparingPayment ? 'در حال بررسی...' : 'پرداخت'}
+                        </button>
                     )}
                 </div>
+
+                {(prepareError || errors?.payment) && (
+                    <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-red-700">
+                        {prepareError ?? errors.payment}
+                    </p>
+                )}
 
                 {latestPayment && (
                     <dl className="mt-4 grid gap-3 rounded-lg bg-white/70 p-4 sm:grid-cols-3">

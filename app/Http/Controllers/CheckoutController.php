@@ -3,22 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InvoiceStatus;
-use App\Enums\PaymentStatus;
 use App\Models\Invoice;
 use App\Models\Setting;
 use App\Services\DiscountService;
+use App\Services\PendingInvoicePaymentService;
 use App\Support\IranProvince;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CheckoutController extends Controller
 {
-    public function __construct(private readonly DiscountService $discounts)
-    {
-    }
+    public function __construct(private readonly DiscountService $discounts) {}
 
     public function store(Request $request): RedirectResponse
     {
@@ -69,6 +69,7 @@ class CheckoutController extends Controller
                 'discount_code' => $invoiceDiscount > 0 ? $appliedCode?->code : null,
                 'invoice_discount_amount' => $invoiceDiscount,
                 'shipping_cost' => $shippingCost,
+                'address_province' => $request->user()->address_province,
                 'address' => $request->user()->deliveryAddress(),
                 'postal_code' => $request->user()->postal_code,
                 'total' => max(0, $subtotal - $invoiceDiscount) + $shippingCost,
@@ -95,63 +96,196 @@ class CheckoutController extends Controller
         return max(0, (int) Setting::getValue($settingKey, '0'));
     }
 
-    public function show(Request $request, Invoice $invoice): Response
-    {
+    public function show(
+        Request $request,
+        Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
+    ): Response {
         abort_if($invoice->user_id !== $request->user()->id, 403);
 
-        $invoice->load(['items', 'latestPayment']);
-
         return Inertia::render('Invoices/Show', [
-            'invoice' => $invoice,
+            'invoice' => $pendingPayments->forDisplay($invoice),
         ]);
     }
 
-    public function applyDiscount(Request $request, Invoice $invoice): RedirectResponse
-    {
-        abort_if($invoice->user_id !== $request->user()->id, 403);
+    public function applyDiscount(
+        Request $request,
+        Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
+    ): RedirectResponse {
+        $this->authorizePendingMutation($request, $invoice, $pendingPayments);
 
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:255'],
         ]);
 
-        if (! $invoice->status->canBePaid()) {
-            return back()->withErrors(['code' => 'امکان اعمال کد تخفیف روی این فاکتور وجود ندارد.']);
-        }
+        $result = DB::transaction(function () use ($invoice, $validated, $pendingPayments): array {
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            $this->assertPendingMutationAllowed($lockedInvoice, $pendingPayments);
+            $refreshed = $pendingPayments->refresh($lockedInvoice);
+            $subtotal = (int) $refreshed['invoice']->items->sum('line_total');
+            $result = $this->discounts->validateCode($validated['code'], $subtotal);
 
-        $invoice->loadMissing('items');
-        $subtotal = (int) $invoice->items->sum('line_total');
+            if ($result['ok']) {
+                $this->discounts->recalculateInvoice($lockedInvoice, $result['code']);
+                $pendingPayments->refresh($lockedInvoice);
+            }
 
-        $result = $this->discounts->validateCode($validated['code'], $subtotal);
+            return $result;
+        });
 
         if (! $result['ok']) {
             return back()->withErrors(['code' => $result['message']]);
         }
 
-        $this->discounts->recalculateInvoice($invoice, $result['code']);
-        $this->syncPendingPayments($invoice);
-
         return back()->with('success', 'کد تخفیف روی فاکتور اعمال شد.');
     }
 
-    public function removeDiscount(Request $request, Invoice $invoice): RedirectResponse
-    {
-        abort_if($invoice->user_id !== $request->user()->id, 403);
+    public function removeDiscount(
+        Request $request,
+        Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
+    ): RedirectResponse {
+        $this->authorizePendingMutation($request, $invoice, $pendingPayments);
 
-        if (! $invoice->status->canBePaid()) {
-            return back()->withErrors(['code' => 'امکان تغییر کد تخفیف روی این فاکتور وجود ندارد.']);
-        }
-
-        $this->discounts->recalculateInvoice($invoice, null);
-        $this->syncPendingPayments($invoice);
+        DB::transaction(function () use ($invoice, $pendingPayments): void {
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            $this->assertPendingMutationAllowed($lockedInvoice, $pendingPayments);
+            $this->discounts->recalculateInvoice($lockedInvoice, null);
+            $pendingPayments->refresh($lockedInvoice);
+        });
 
         return back()->with('success', 'کد تخفیف حذف شد.');
     }
 
-    private function syncPendingPayments(Invoice $invoice): void
-    {
-        $invoice->payments()
-            ->where('status', PaymentStatus::Pending->value)
-            ->update(['amount' => $invoice->total]);
+    public function updateItem(
+        Request $request,
+        Invoice $invoice,
+        int $invoiceItem,
+        PendingInvoicePaymentService $pendingPayments,
+    ): RedirectResponse {
+        $this->authorizePendingMutation($request, $invoice, $pendingPayments);
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'between:1,20'],
+        ]);
+
+        DB::transaction(function () use ($invoice, $invoiceItem, $validated, $pendingPayments): void {
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            $this->assertPendingMutationAllowed($lockedInvoice, $pendingPayments);
+
+            $item = $lockedInvoice->items()->lockForUpdate()->findOrFail($invoiceItem);
+            $item->forceFill(['quantity' => $validated['quantity']])->save();
+            $result = $pendingPayments->refresh($lockedInvoice);
+
+            if ($result['stock_failures'] !== []) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'تعداد درخواستی از موجودی قابل فروش بیشتر است.',
+                ]);
+            }
+        });
+
+        return back()->with('success', 'تعداد کالا به‌روزرسانی شد.');
+    }
+
+    public function destroyItem(
+        Request $request,
+        Invoice $invoice,
+        int $invoiceItem,
+        PendingInvoicePaymentService $pendingPayments,
+    ): RedirectResponse {
+        $this->authorizePendingMutation($request, $invoice, $pendingPayments);
+
+        DB::transaction(function () use ($invoice, $invoiceItem, $pendingPayments): void {
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            $this->assertPendingMutationAllowed($lockedInvoice, $pendingPayments);
+            abort_if($lockedInvoice->items()->count() <= 1, 422, 'Delete the invoice instead.');
+
+            $lockedInvoice->items()->lockForUpdate()->findOrFail($invoiceItem)->delete();
+            $pendingPayments->refresh($lockedInvoice);
+        });
+
+        return back()->with('success', 'کالا از فاکتور حذف شد.');
+    }
+
+    public function destroy(
+        Request $request,
+        Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
+    ): RedirectResponse {
+        $this->authorizePendingMutation($request, $invoice, $pendingPayments);
+
+        DB::transaction(function () use ($invoice, $pendingPayments): void {
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            abort_unless($lockedInvoice->status === InvoiceStatus::PendingPayment, 409);
+            abort_if($pendingPayments->hasActiveGatewaySession($lockedInvoice), 409);
+            abort_unless($lockedInvoice->items()->count() === 1, 422);
+            $lockedInvoice->delete();
+        });
+
+        return redirect()->route('dashboard')->with('success', 'فاکتور حذف شد.');
+    }
+
+    public function preparePayment(
+        Request $request,
+        Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
+    ): JsonResponse {
+        abort_if($invoice->user_id !== $request->user()->id, 403);
+
+        $prepared = DB::transaction(function () use ($invoice, $pendingPayments): array {
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+
+            if (! $lockedInvoice->status->canBePaid()) {
+                return ['blocked' => 'status'];
+            }
+
+            if ($pendingPayments->hasActiveGatewaySession($lockedInvoice)) {
+                return ['blocked' => 'active_session'];
+            }
+
+            return ['blocked' => null, 'result' => $pendingPayments->refresh($lockedInvoice)];
+        });
+
+        if ($prepared['blocked'] === 'status') {
+            return response()->json(['ok' => false, 'message' => 'امکان پرداخت این فاکتور وجود ندارد.'], 422);
+        }
+
+        if ($prepared['blocked'] === 'active_session') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'یک نشست پرداخت فعال برای این فاکتور وجود دارد.',
+            ], 409);
+        }
+
+        $result = $prepared['result'];
+
+        return response()->json([
+            'ok' => count($result['stock_failures']) === 0,
+            'changed' => $result['changed'],
+            'differences' => $result['differences'],
+            'stock_failures' => $result['stock_failures'],
+            'quote' => $result['quote'],
+            'invoice' => $result['invoice'],
+        ], count($result['stock_failures']) === 0 ? 200 : 422);
+    }
+
+    private function authorizePendingMutation(
+        Request $request,
+        Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
+    ): void {
+        abort_if($invoice->user_id !== $request->user()->id, 403);
+        abort_unless($invoice->status === InvoiceStatus::PendingPayment, 409);
+        abort_if($pendingPayments->hasActiveGatewaySession($invoice), 409, 'An active payment session exists.');
+    }
+
+    private function assertPendingMutationAllowed(
+        Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
+    ): void {
+        abort_unless($invoice->status === InvoiceStatus::PendingPayment, 409);
+        abort_if($pendingPayments->hasActiveGatewaySession($invoice), 409, 'An active payment session exists.');
     }
 
     private function invoiceProductName($item): string

@@ -41,12 +41,12 @@ class WelcomeController extends Controller
         return Product::query()
             ->with('subProducts')
             ->where('is_active', true)
-            ->inStockFirst()
+            ->hasStock()
             ->latest('id')
             ->take(10)
             ->get()
             ->map(function (Product $product): array {
-                $subProduct = $product->subProducts->first();
+                $subProduct = $product->preferredSubProduct();
                 $sizeCount = $product->subProducts->pluck('size')->filter()->unique()->count();
                 $colorCount = $product->subProducts->pluck('color_name')->filter()->unique()->count();
 

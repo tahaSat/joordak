@@ -1,8 +1,6 @@
 <?php
 
-use App\Http\Controllers\BlogController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\AboutUsController;
 use App\Http\Controllers\Admin\BlogPostController as AdminBlogPostController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -13,7 +11,9 @@ use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\SlugController as AdminSlugController;
 use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\AboutUsController;
+use App\Http\Controllers\BlogController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\HomeBannerController;
 use App\Http\Controllers\PaymentHistoryController;
 use App\Http\Controllers\ProductController;
@@ -100,6 +100,7 @@ Route::prefix('admin')
         Route::get('/invoices', [AdminInvoiceController::class, 'index'])->name('invoices.index');
         Route::get('/invoices/export', [AdminInvoiceController::class, 'export'])->name('invoices.export');
         Route::get('/invoices/{invoice}', [AdminInvoiceController::class, 'show'])->name('invoices.show');
+        Route::patch('/invoices/{invoice}', [AdminInvoiceController::class, 'update'])->name('invoices.update');
         Route::post('/invoices/{invoice}/cancel', [AdminInvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::post('/invoices/{invoice}/deliver-to-post', [AdminInvoiceController::class, 'deliverToPost'])->name('invoices.deliver-to-post');
 
@@ -136,6 +137,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/invoices/{invoice}', [CheckoutController::class, 'show'])->name('invoices.show');
+    Route::post('/invoices/{invoice}/prepare-payment', [CheckoutController::class, 'preparePayment'])->name('invoices.prepare-payment');
+    Route::patch('/invoices/{invoice}/items/{invoiceItem}', [CheckoutController::class, 'updateItem'])->name('invoices.items.update');
+    Route::delete('/invoices/{invoice}/items/{invoiceItem}', [CheckoutController::class, 'destroyItem'])->name('invoices.items.destroy');
+    Route::delete('/invoices/{invoice}', [CheckoutController::class, 'destroy'])->name('invoices.destroy');
     Route::post('/invoices/{invoice}/discount', [CheckoutController::class, 'applyDiscount'])->name('invoices.discount.store');
     Route::delete('/invoices/{invoice}/discount', [CheckoutController::class, 'removeDiscount'])->name('invoices.discount.destroy');
     Route::get('/invoices/{invoice}/pay', [ZibalPaymentController::class, 'pay'])->name('invoices.pay');

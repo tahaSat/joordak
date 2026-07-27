@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\PaymentLifecycleService;
+use App\Services\PendingInvoicePaymentService;
 use App\Services\ZibalPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,7 @@ class ZibalPaymentController extends Controller
     public function pay(
         Request $request,
         Invoice $invoice,
+        PendingInvoicePaymentService $pendingPayments,
     ): RedirectResponse|Response {
         abort_if($invoice->user_id !== $request->user()->id, 403);
 
@@ -28,10 +30,23 @@ class ZibalPaymentController extends Controller
             return redirect()->route('invoices.show', $invoice);
         }
 
-        $invoice->load(['items', 'latestPayment']);
+        $quote = (string) $request->query('quote');
+        if ($quote === '') {
+            return redirect()->route('invoices.show', $invoice)
+                ->withErrors(['payment' => 'لطفاً پرداخت را از صفحه فاکتور آغاز کنید.']);
+        }
+
+        $prepared = $pendingPayments->refresh($invoice);
+        if (! $prepared['invoice']->status->canBePaid()
+            || $prepared['stock_failures'] !== []
+            || ! hash_equals($prepared['quote'], $quote)) {
+            return redirect()->route('invoices.show', $invoice)
+                ->withErrors(['payment' => 'قیمت یا موجودی فاکتور تغییر کرده است. لطفاً دوباره بررسی کنید.']);
+        }
 
         return Inertia::render('Payments/Zibal/Process', [
-            'invoice' => $invoice,
+            'invoice' => $prepared['invoice'],
+            'quote' => $prepared['quote'],
         ]);
     }
 
@@ -39,7 +54,8 @@ class ZibalPaymentController extends Controller
         Request $request,
         Invoice $invoice,
         ZibalPaymentService $zibal,
-        PaymentLifecycleService $lifecycle
+        PaymentLifecycleService $lifecycle,
+        PendingInvoicePaymentService $pendingPayments,
     ): JsonResponse {
         abort_if($invoice->user_id !== $request->user()->id, 403);
 
@@ -52,7 +68,38 @@ class ZibalPaymentController extends Controller
             ], 422);
         }
 
+        $quote = (string) $request->input('quote');
+        $prepared = $pendingPayments->refresh($invoice);
+
+        if (! $prepared['invoice']->status->canBePaid()
+            || $quote === ''
+            || $prepared['stock_failures'] !== []
+            || ! hash_equals($prepared['quote'], $quote)) {
+            return response()->json([
+                'ok' => false,
+                'changed' => true,
+                'stock_failures' => $prepared['stock_failures'],
+                'redirect_url' => route('invoices.show', $invoice),
+                'message' => 'Invoice price or stock changed. Please review it again.',
+            ], 422);
+        }
+
+        $invoice = $prepared['invoice'];
+
         $payment = $this->openPaymentFor($invoice);
+        $finalCheck = $pendingPayments->refresh($invoice);
+
+        if ($finalCheck['stock_failures'] !== []
+            || ! hash_equals($finalCheck['quote'], $quote)
+            || (int) $payment->fresh()->amount !== (int) $finalCheck['invoice']->total) {
+            return response()->json([
+                'ok' => false,
+                'redirect_url' => route('invoices.show', $invoice),
+                'message' => 'The invoice changed while payment was starting. Please review it again.',
+            ], 409);
+        }
+
+        $payment = $payment->refresh();
 
         Log::info('Zibal payment initiation requested', [
             'invoice_id' => $invoice->id,
