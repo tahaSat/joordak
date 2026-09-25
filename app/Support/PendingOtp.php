@@ -12,12 +12,11 @@ class PendingOtp
 
     public const RESEND_COOLDOWN_SECONDS = 120;
 
-    public static function store(Request $request, string $phone, string $purpose, ?string $name = null): void
+    public static function store(Request $request, string $phone, string $purpose): void
     {
         $request->session()->put(self::SESSION_KEY, [
             'phone' => $phone,
             'purpose' => $purpose,
-            'name' => $name,
             'sent_at' => now()->timestamp,
         ]);
     }
@@ -58,19 +57,25 @@ class PendingOtp
     }
 
     /**
-     * @return array{phone: string, name: ?string, sentAt: int, resendSecondsRemaining: int}|null
+     * @return array{phone: string, purpose: string, sentAt: int, resendSecondsRemaining: int}|null
      */
-    public static function forInertia(Request $request, string $purpose): ?array
+    public static function forInertia(Request $request): ?array
     {
         $pending = self::get($request);
 
-        if (! $pending || ($pending['purpose'] ?? '') !== $purpose) {
+        if (! $pending) {
+            return null;
+        }
+
+        $purpose = (string) ($pending['purpose'] ?? '');
+
+        if (! in_array($purpose, ['login', 'register'], true)) {
             return null;
         }
 
         return [
             'phone' => (string) $pending['phone'],
-            'name' => isset($pending['name']) ? (string) $pending['name'] : null,
+            'purpose' => $purpose,
             'sentAt' => (int) $pending['sent_at'],
             'resendSecondsRemaining' => self::resendSecondsRemaining($pending),
         ];

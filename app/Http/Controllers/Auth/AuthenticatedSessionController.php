@@ -24,7 +24,7 @@ class AuthenticatedSessionController extends Controller
 
         return Inertia::render('Auth/Login', [
             'status' => session('status'),
-            'pendingOtp' => PendingOtp::forInertia($request, 'login'),
+            'pendingOtp' => PendingOtp::forInertia($request),
         ]);
     }
 

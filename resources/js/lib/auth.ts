@@ -40,13 +40,5 @@ export function loginUrl(currentUrl?: string): string {
 }
 
 export function registerUrl(currentUrl?: string): string {
-    const redirectPath = currentUrl ?? currentRedirectPath();
-
-    if (isAuthPath(redirectPath)) {
-        return route('register');
-    }
-
-    const params = new URLSearchParams({ redirect: redirectPath });
-
-    return `${route('register')}?${params.toString()}`;
+    return loginUrl(currentUrl);
 }

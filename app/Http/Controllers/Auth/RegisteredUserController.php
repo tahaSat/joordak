@@ -15,21 +15,17 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view.
+     * Redirect registration to the unified login flow.
      */
-    public function create(Request $request): Response
+    public function create(Request $request): RedirectResponse
     {
         RedirectAfterAuth::rememberFromQuery($request);
 
-        return Inertia::render('Auth/Register', [
-            'pendingOtp' => PendingOtp::forInertia($request, 'register'),
-        ]);
+        return redirect()->route('login', $request->query());
     }
 
     /**
@@ -41,6 +37,7 @@ class RegisteredUserController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'surname' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:20'],
             'otp' => ['required', 'string', 'digits:6'],
         ]);
@@ -67,6 +64,7 @@ class RegisteredUserController extends Controller
 
         $user = User::create([
             'name' => $validated['name'],
+            'surname' => $validated['surname'],
             'phone' => $phone,
             'role' => 'customer',
             'password' => Hash::make(Str::random(32)),

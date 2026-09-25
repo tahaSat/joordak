@@ -17,7 +17,7 @@ class OtpController extends Controller
     public function send(SendOtpRequest $request, OtpService $otpService, SmsService $smsService): RedirectResponse
     {
         $phone = $request->normalizedPhone();
-        $purpose = (string) $request->input('purpose');
+        $purpose = $request->purpose();
         $throttleKey = "otp-send:{$purpose}:{$phone}";
 
         if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
@@ -42,12 +42,7 @@ class OtpController extends Controller
             ]);
         }
 
-        PendingOtp::store(
-            $request,
-            $phone,
-            $purpose,
-            $purpose === 'register' ? (string) $request->input('name') : null,
-        );
+        PendingOtp::store($request, $phone, $purpose);
 
         return back();
     }

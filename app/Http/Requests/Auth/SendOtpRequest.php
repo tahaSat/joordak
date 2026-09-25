@@ -6,11 +6,12 @@ use App\Models\User;
 use App\Support\PhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class SendOtpRequest extends FormRequest
 {
+    private ?string $resolvedPurpose = null;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -28,8 +29,6 @@ class SendOtpRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'max:20'],
-            'purpose' => ['required', 'string', Rule::in(['login', 'register'])],
-            'name' => ['required_if:purpose,register', 'nullable', 'string', 'max:255'],
         ];
     }
 
@@ -46,18 +45,24 @@ class SendOtpRequest extends FormRequest
 
             $userExists = User::query()->where('phone', $phone)->exists();
 
-            if ($this->input('purpose') === 'login' && ! $userExists) {
-                $validator->errors()->add('phone', 'کاربری با این شماره موبایل یافت نشد.');
-            }
-
-            if ($this->input('purpose') === 'register' && $userExists) {
-                $validator->errors()->add('phone', 'این شماره موبایل قبلاً ثبت شده است.');
-            }
+            $this->resolvedPurpose = $userExists ? 'login' : 'register';
         });
     }
 
     public function normalizedPhone(): string
     {
         return PhoneNumber::normalize((string) $this->input('phone'));
+    }
+
+    public function purpose(): string
+    {
+        if ($this->resolvedPurpose !== null) {
+            return $this->resolvedPurpose;
+        }
+
+        $phone = $this->normalizedPhone();
+        $userExists = User::query()->where('phone', $phone)->exists();
+
+        return $userExists ? 'login' : 'register';
     }
 }

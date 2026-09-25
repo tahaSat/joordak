@@ -4,26 +4,32 @@ import OtpResendButton from '@/Components/OtpResendButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { useOtpResendCooldown } from '@/hooks/useOtpResendCooldown';
-import { registerUrl } from '@/lib/auth';
+import { normalizeDigits } from '@/lib/digits';
 import StorefrontLayout from '@/Layouts/StorefrontLayout';
 import type { LoginPageProps, PageProps } from '@/types';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { ChangeEvent, FormEvent } from 'react';
 
 export default function Login({ status, pendingOtp }: PageProps<LoginPageProps>) {
-    const { url } = usePage();
     const hasPendingOtp = Boolean(pendingOtp);
+    const isRegister = pendingOtp?.purpose === 'register';
     const { secondsLeft, canResend, restart, reset } = useOtpResendCooldown(pendingOtp?.resendSecondsRemaining ?? 0);
 
     const sendForm = useForm({
         phone: pendingOtp?.phone ?? '',
-        purpose: 'login',
     });
 
     const loginForm = useForm({
         phone: pendingOtp?.phone ?? '',
         otp: '',
         remember: false,
+    });
+
+    const registerForm = useForm({
+        name: '',
+        surname: '',
+        phone: pendingOtp?.phone ?? '',
+        otp: '',
     });
 
     const sendOtp = (event?: FormEvent) => {
@@ -33,6 +39,7 @@ export default function Login({ status, pendingOtp }: PageProps<LoginPageProps>)
             preserveScroll: true,
             onSuccess: () => {
                 loginForm.setData('phone', sendForm.data.phone);
+                registerForm.setData('phone', sendForm.data.phone);
                 restart();
             },
         });
@@ -48,6 +55,16 @@ export default function Login({ status, pendingOtp }: PageProps<LoginPageProps>)
         });
     };
 
+    const submitRegister = (event: FormEvent) => {
+        event.preventDefault();
+
+        registerForm.setData('phone', pendingOtp?.phone ?? sendForm.data.phone ?? registerForm.data.phone);
+
+        registerForm.post(route('register'), {
+            onFinish: () => registerForm.reset('otp'),
+        });
+    };
+
     const changePhone = () => {
         router.post(route('otp.cancel'), {}, {
             preserveScroll: true,
@@ -55,17 +72,29 @@ export default function Login({ status, pendingOtp }: PageProps<LoginPageProps>)
                 reset();
                 sendForm.reset();
                 loginForm.reset();
+                registerForm.reset();
             },
         });
     };
 
+    const registerSubmitDisabled =
+        registerForm.processing ||
+        !registerForm.data.name.trim() ||
+        !registerForm.data.surname.trim() ||
+        registerForm.data.otp.length !== 6;
+
+    const pageTitle = isRegister ? 'ثبت‌نام' : 'ورود';
+    const pageSubtitle = isRegister
+        ? 'کد تأیید را وارد کنید و نام خود را تکمیل کنید.'
+        : 'با شماره موبایل و کد یکبار مصرف وارد شوید.';
+
     return (
-        <StorefrontLayout title="ورود" seo={{ noIndex: true }}>
-            <Head title="ورود" />
+        <StorefrontLayout title={pageTitle} seo={{ noIndex: true }}>
+            <Head title={pageTitle} />
 
             <div style={{ maxWidth: '400px', margin: '48px auto', padding: '0 24px' }}>
-                <h1 className="text-3xl font-black mb-2">ورود</h1>
-                <p className="mb-6 text-sm text-gray-600">با شماره موبایل و کد یکبار مصرف وارد شوید.</p>
+                <h1 className="text-3xl font-black mb-2">{pageTitle}</h1>
+                <p className="mb-6 text-sm text-gray-600">{pageSubtitle}</p>
 
                 {status && <div className="mb-4 text-sm font-medium text-green-600">{status}</div>}
 
@@ -82,17 +111,89 @@ export default function Login({ status, pendingOtp }: PageProps<LoginPageProps>)
                                 autoComplete="tel"
                                 isFocused
                                 placeholder="09123456789"
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => sendForm.setData('phone', e.target.value)}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => sendForm.setData('phone', normalizeDigits(e.target.value))}
                             />
                             <InputError message={sendForm.errors.phone} className="mt-2" />
                         </div>
 
-                        <div className="mt-6 flex items-center justify-between">
-                            <Link href={registerUrl(url)} className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none">
-                                حساب کاربری ندارید؟ ثبت‌نام
-                            </Link>
+                        <div className="mt-6 flex justify-end">
+                            <PrimaryButton className="w-full sm:w-auto" disabled={sendForm.processing}>دریافت کد</PrimaryButton>
+                        </div>
+                    </form>
+                ) : isRegister ? (
+                    <form onSubmit={submitRegister}>
+                        <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+                            کد تأیید به شماره {pendingOtp?.phone} ارسال شد.
+                        </div>
 
-                            <PrimaryButton disabled={sendForm.processing}>دریافت کد</PrimaryButton>
+                        <div>
+                            <InputLabel htmlFor="name" value="نام" />
+                            <TextInput
+                                id="name"
+                                type="text"
+                                name="name"
+                                value={registerForm.data.name}
+                                className="mt-1 block w-full"
+                                autoComplete="given-name"
+                                isFocused
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => registerForm.setData('name', e.target.value)}
+                            />
+                            <InputError message={registerForm.errors.name} className="mt-2" />
+                        </div>
+
+                        <div className="mt-4">
+                            <InputLabel htmlFor="surname" value="نام خانوادگی" />
+                            <TextInput
+                                id="surname"
+                                type="text"
+                                name="surname"
+                                value={registerForm.data.surname}
+                                className="mt-1 block w-full"
+                                autoComplete="family-name"
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => registerForm.setData('surname', e.target.value)}
+                            />
+                            <InputError message={registerForm.errors.surname} className="mt-2" />
+                        </div>
+
+                        <div className="mt-4">
+                            <InputLabel htmlFor="otp" value="کد تأیید" />
+                            <TextInput
+                                id="otp"
+                                type="tel"
+                                name="otp"
+                                inputMode="numeric"
+                                pattern="[0-9]{6}"
+                                minLength={6}
+                                maxLength={6}
+                                required
+                                value={registerForm.data.otp}
+                                className="mt-1 block w-full text-center text-lg tracking-[0.35em]"
+                                autoComplete="one-time-code"
+                                placeholder="123456"
+                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                    registerForm.setData('otp', normalizeDigits(e.target.value).slice(0, 6))
+                                }
+                            />
+                            <InputError message={registerForm.errors.otp} className="mt-2" />
+                            <InputError message={registerForm.errors.phone} className="mt-2" />
+                            <OtpResendButton
+                                canResend={canResend}
+                                secondsLeft={secondsLeft}
+                                processing={sendForm.processing}
+                                onResend={() => sendOtp()}
+                            />
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-between">
+                            <button
+                                type="button"
+                                onClick={changePhone}
+                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none"
+                            >
+                                تغییر شماره
+                            </button>
+
+                            <PrimaryButton disabled={registerSubmitDisabled}>ثبت‌نام</PrimaryButton>
                         </div>
                     </form>
                 ) : (
@@ -118,7 +219,7 @@ export default function Login({ status, pendingOtp }: PageProps<LoginPageProps>)
                                 isFocused
                                 placeholder="123456"
                                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                    loginForm.setData('otp', e.target.value.replace(/\D/g, '').slice(0, 6))
+                                    loginForm.setData('otp', normalizeDigits(e.target.value).slice(0, 6))
                                 }
                             />
                             <InputError message={loginForm.errors.otp} className="mt-2" />

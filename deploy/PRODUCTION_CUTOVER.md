@@ -53,7 +53,7 @@ Add to crontab:
 * * * * * cd /path/to/joordak && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-This runs Zibal reconciliation every 5 minutes for stuck payments.
+This runs Zibal open-payment reconciliation every 5 minutes (`ReconcileOpenPayments`: verify then expire after 30 minutes).
 
 ## Post-deploy verification
 

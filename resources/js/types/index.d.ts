@@ -29,17 +29,13 @@ export type PageProps<T extends object = Record<string, unknown>> = T & {
 
 export interface PendingOtpState {
     phone: string;
-    name?: string | null;
+    purpose: 'login' | 'register';
     sentAt: number;
     resendSecondsRemaining: number;
 }
 
 export interface LoginPageProps {
     status?: string | null;
-    pendingOtp?: PendingOtpState | null;
-}
-
-export interface RegisterPageProps {
     pendingOtp?: PendingOtpState | null;
 }
 
