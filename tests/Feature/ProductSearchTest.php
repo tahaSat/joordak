@@ -38,14 +38,15 @@ class ProductSearchTest extends TestCase
         $this->getJson(route('products.search.suggestions', ['search' => 'گردنبند']))
             ->assertOk()
             ->assertJsonCount(2, 'data')
+            ->assertJsonPath('remaining_count', 0)
             ->assertJsonFragment(['title' => 'محصول دسته بندی شده'])
             ->assertJsonFragment(['title' => 'گردنبند نقره'])
             ->assertJsonMissing(['title' => 'گردنبند غیرفعال']);
     }
 
-    public function test_suggestions_are_limited_to_three_products(): void
+    public function test_suggestions_are_limited_to_five_products_and_report_remaining_results(): void
     {
-        foreach (range(1, 4) as $number) {
+        foreach (range(1, 7) as $number) {
             Product::query()->create([
                 'title' => "گردنبند {$number}",
                 'slug' => "necklace-{$number}",
@@ -55,7 +56,8 @@ class ProductSearchTest extends TestCase
 
         $this->getJson(route('products.search.suggestions', ['search' => 'گردنبند']))
             ->assertOk()
-            ->assertJsonCount(3, 'data');
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('remaining_count', 2);
     }
 
     public function test_product_listing_search_is_combined_with_the_selected_category(): void

@@ -237,7 +237,7 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                 {imageUrl && <meta head-key="twitter:image" name="twitter:image" content={imageUrl} />}
             </Head>
             <div className="relative flex min-h-screen flex-col bg-white text-slate-800">
-                <header className="sticky top-0 z-50 bg-joordak">
+                <header className="sticky top-0 z-50 overflow-x-clip bg-joordak">
                     <div className="relative mx-auto flex max-w-[1480px] items-center justify-between gap-2 px-6 py-4 sm:gap-6 sm:px-10 lg:px-16">
                         <div className="order-3 flex shrink-0 items-center gap-0 lg:hidden">
                             <ProductSearch currentUrl={url} mobile />

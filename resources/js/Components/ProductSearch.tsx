@@ -19,6 +19,7 @@ interface ProductSearchProps {
 export default function ProductSearch({ currentUrl, mobile = false }: ProductSearchProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
+    const [remainingCount, setRemainingCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -34,12 +35,14 @@ export default function ProductSearch({ currentUrl, mobile = false }: ProductSea
     useEffect(() => {
         if (!normalizedSearch) {
             setSuggestions([]);
+            setRemainingCount(0);
             setIsLoading(false);
             return;
         }
 
         const controller = new AbortController();
         setSuggestions([]);
+        setRemainingCount(0);
         setIsLoading(true);
 
         const timeoutId = window.setTimeout(async () => {
@@ -53,11 +56,13 @@ export default function ProductSearch({ currentUrl, mobile = false }: ProductSea
                     throw new Error('Search request failed');
                 }
 
-                const payload = await response.json() as { data: ProductSuggestion[] };
+                const payload = await response.json() as { data: ProductSuggestion[]; remaining_count: number };
                 setSuggestions(payload.data);
+                setRemainingCount(payload.remaining_count);
             } catch {
                 if (!controller.signal.aborted) {
                     setSuggestions([]);
+                    setRemainingCount(0);
                 }
             } finally {
                 if (!controller.signal.aborted) {
@@ -140,13 +145,15 @@ export default function ProductSearch({ currentUrl, mobile = false }: ProductSea
                     ))
                 )}
             </div>
-            <Link
-                href={route('products.index', { search: normalizedSearch })}
-                onClick={closeSearch}
-                className="block border-t border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
-            >
-                مشاهده ی همه
-            </Link>
+            {remainingCount > 0 && (
+                <Link
+                    href={route('products.index', { search: normalizedSearch })}
+                    onClick={closeSearch}
+                    className="block border-t border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
+                >
+                    مشاهده ی همه ({remainingCount})
+                </Link>
+            )}
         </>
     );
 
@@ -183,7 +190,7 @@ export default function ProductSearch({ currentUrl, mobile = false }: ProductSea
                     aria-expanded={false}
                     className={`flex h-10 w-10 items-center justify-center rounded-full text-white transition ${mobile ? 'bg-transparent hover:bg-transparent' : 'bg-white/10 hover:bg-white/20'} focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70`}
                 >
-                    <IconSearch size={20} stroke={1.8} aria-hidden="true" />
+                    <IconSearch size={20} stroke={1.8} className={mobile ? 'translate-x-1' : undefined} aria-hidden="true" />
                 </button>
             )}
             {isExpanded && normalizedSearch && (

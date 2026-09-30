@@ -71,7 +71,7 @@ class ProductController extends Controller
         $search = $this->normalizedSearch();
 
         if ($search === '') {
-            return response()->json(['data' => []]);
+            return response()->json(['data' => [], 'remaining_count' => 0]);
         }
 
         $query = Product::query()
@@ -80,12 +80,13 @@ class ProductController extends Controller
             ->where('is_active', true);
 
         $this->applySearch($query, $search);
+        $remainingCount = max(0, (clone $query)->count() - 5);
 
         return response()->json([
             'data' => $query
                 ->inStockFirst()
                 ->latest('id')
-                ->limit(3)
+                ->limit(5)
                 ->get()
                 ->map(fn (Product $product): array => [
                     'id' => $product->id,
@@ -95,6 +96,7 @@ class ProductController extends Controller
                     'category' => $product->category ? ['name' => $product->category->name] : null,
                 ])
                 ->all(),
+            'remaining_count' => $remainingCount,
         ]);
     }
 
