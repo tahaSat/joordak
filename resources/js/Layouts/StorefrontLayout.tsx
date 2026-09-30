@@ -1,5 +1,6 @@
 import Dropdown from '@/Components/Dropdown';
 import { SITE_LOGO_URL } from '@/Components/ApplicationLogo';
+import ProductSearch from '@/Components/ProductSearch';
 import { loginUrl } from '@/lib/auth';
 import type { PageProps } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -42,7 +43,7 @@ interface FooterLink {
     value: string;
 }
 
-import { actionButtonClassName, logoClassName, siteConfig } from '@/constants/siteConfig';
+import { siteConfig } from '@/constants/siteConfig';
 
 const siteName = siteConfig.name;
 const defaultDescription = siteConfig.description;
@@ -237,41 +238,30 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
             </Head>
             <div className="relative flex min-h-screen flex-col bg-white text-slate-800">
                 <header className="sticky top-0 z-50 bg-joordak">
-                    <div className="relative mx-auto flex max-w-[1480px] items-center justify-between gap-6 px-6 py-4 sm:px-10 lg:px-16">
-                        {user && cartCount > 0 ? (
-                            <>
-                                <Link
-                                    href={route('cart.index')}
-                                    className="rounded-full bg-joordak-coral px-4 py-2 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-white/90 lg:hidden"
-                                >
-                                    سبد خرید ({cartCount})
-                                </Link>
-                                <Link href={route('landing')} className="hidden items-center gap-3 lg:flex">
-                                    <img src={SITE_LOGO_URL} alt="فروشگاه جردک" decoding="async" className="h-9 w-auto object-contain lg:h-11" />
-                                </Link>
-                            </>
-                        ) : (
-                            <Link href={route('landing')} className="flex items-center gap-3">
-                                <img src={SITE_LOGO_URL} alt="فروشگاه جردک" decoding="async" className="h-9 w-auto object-contain lg:h-11" />
-                            </Link>
-                        )}
+                    <div className="relative mx-auto flex max-w-[1480px] items-center justify-between gap-2 px-6 py-4 sm:gap-6 sm:px-10 lg:px-16">
+                        <div className="order-3 flex shrink-0 items-center gap-0 lg:hidden">
+                            <ProductSearch currentUrl={url} mobile />
+                            <button
+                                type="button"
+                                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                                aria-label={isMobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
+                                aria-expanded={isMobileMenuOpen}
+                                className="inline-flex flex-col items-end gap-1.5 p-2 text-white"
+                            >
+                                <span
+                                    className={`h-0.5 rounded-full bg-current transition-all duration-300 ${isMobileMenuOpen ? 'w-5' : 'w-7'}`}
+                                    aria-hidden="true"
+                                />
+                                <span
+                                    className={`h-0.5 rounded-full bg-current transition-all duration-300 ${isMobileMenuOpen ? 'w-5' : 'w-4'}`}
+                                    aria-hidden="true"
+                                />
+                            </button>
+                        </div>
 
-                        <button
-                            type="button"
-                            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-                            aria-label={isMobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
-                            aria-expanded={isMobileMenuOpen}
-                            className="inline-flex flex-col items-end gap-1.5 p-2 text-white lg:hidden"
-                        >
-                            <span
-                                className={`h-0.5 rounded-full bg-current transition-all duration-300 ${isMobileMenuOpen ? 'w-5' : 'w-7'}`}
-                                aria-hidden="true"
-                            />
-                            <span
-                                className={`h-0.5 rounded-full bg-current transition-all duration-300 ${isMobileMenuOpen ? 'w-5' : 'w-4'}`}
-                                aria-hidden="true"
-                            />
-                        </button>
+                        <Link href={route('landing')} className="order-1 flex items-center gap-3 lg:order-none">
+                            <img src={SITE_LOGO_URL} alt="فروشگاه جردک" decoding="async" className="h-9 w-auto object-contain lg:h-11" />
+                        </Link>
 
                         <nav className="hidden items-center gap-8 lg:flex">
                             {navItems.map((item) => (
@@ -294,6 +284,7 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                     >
                                         سبد خرید ({cartCount})
                                     </Link>
+                                    <ProductSearch currentUrl={url} />
                                     <Dropdown>
                                         <Dropdown.Trigger>
                                             <span className="inline-flex rounded-full">
@@ -329,12 +320,15 @@ export default function StorefrontLayout({ title, seo, children }: StorefrontLay
                                     </Dropdown>
                                 </>
                             ) : (
-                                <Link
-                                    href={loginUrl(url)}
-                                    className="rounded-full bg-joordak-coral px-5 py-2 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-white/90"
-                                >
-                                    ورود
-                                </Link>
+                                <>
+                                    <ProductSearch currentUrl={url} />
+                                    <Link
+                                        href={loginUrl(url)}
+                                        className="rounded-full bg-joordak-coral px-5 py-2 text-sm font-semibold text-white transition hover:translate-y-[-1px] hover:bg-white/90"
+                                    >
+                                        ورود
+                                    </Link>
+                                </>
                             )}
                         </div>
                     </div>

@@ -41,9 +41,10 @@ interface ProductsIndexProps {
     cartItems: Record<number, { quantity: number; cart_item_id: number }>;
     selectedCategory?: Category | null;
     showDiscountedOnly?: boolean;
+    search?: string;
 }
 
-export default function ProductsIndex({ products, categories, cartItems, selectedCategory, showDiscountedOnly = false }: ProductsIndexProps) {
+export default function ProductsIndex({ products, categories, cartItems, selectedCategory, showDiscountedOnly = false, search = '' }: ProductsIndexProps) {
     const { auth, errors } = usePage<{ auth: { user: any }, errors: Record<string, string> }>().props;
     const {
         cartItems: optimisticCartItems,
@@ -68,21 +69,21 @@ export default function ProductsIndex({ products, categories, cartItems, selecte
             : 'خرید پیرسینگ، گردنبند، انگشتر و زیورآلات از فروشگاه آنلاین Joordak.';
 
     const filterAll = () => {
-        router.get(route('products.index'), {}, { preserveScroll: false });
+        router.get(route('products.index'), search ? { search } : {}, { preserveScroll: false });
     };
 
     const filterDiscounted = () => {
-        router.get(route('products.index'), { discounted: 1 }, { preserveScroll: false });
+        router.get(route('products.index'), { ...(search ? { search } : {}), discounted: 1 }, { preserveScroll: false });
     };
 
     const filterByCategory = (categorySlug: string) => {
-        router.get(route('products.index'), { category: categorySlug }, { preserveScroll: false });
+        router.get(route('products.index'), { ...(search ? { search } : {}), category: categorySlug }, { preserveScroll: false });
     };
 
     useEffect(() => {
         setProductList(products.data);
         setNextPageUrl(products.next_page_url);
-    }, [selectedCategory?.id, showDiscountedOnly]);
+    }, [selectedCategory?.id, showDiscountedOnly, search]);
 
     useEffect(() => {
         const sentinel = loadMoreRef.current;

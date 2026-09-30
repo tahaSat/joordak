@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\SubProduct;
+use App\Models\User;
 use App\Support\LiaraUrl;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,9 +17,14 @@ class ProductController extends Controller
 {
     public function index(): Response
     {
+        $search = $this->normalizedSearch();
         $query = Product::query()
             ->with(['category:id,name,slug', 'subProducts'])
             ->where('is_active', true);
+
+        if ($search !== '') {
+            $this->applySearch($query, $search);
+        }
 
         $selectedCategory = null;
         $showDiscountedOnly = request()->boolean('discounted');
@@ -53,6 +62,39 @@ class ProductController extends Controller
             'cartItems' => $this->cartItems(),
             'selectedCategory' => $selectedCategory,
             'showDiscountedOnly' => $showDiscountedOnly,
+            'search' => $search,
+        ]);
+    }
+
+    public function suggestions(): JsonResponse
+    {
+        $search = $this->normalizedSearch();
+
+        if ($search === '') {
+            return response()->json(['data' => []]);
+        }
+
+        $query = Product::query()
+            ->select(['id', 'category_id', 'title', 'slug', 'image_url'])
+            ->with('category:id,name,slug')
+            ->where('is_active', true);
+
+        $this->applySearch($query, $search);
+
+        return response()->json([
+            'data' => $query
+                ->inStockFirst()
+                ->latest('id')
+                ->limit(3)
+                ->get()
+                ->map(fn (Product $product): array => [
+                    'id' => $product->id,
+                    'title' => $product->title,
+                    'slug' => $product->slug,
+                    'image_url' => LiaraUrl::fromPath($product->image_url),
+                    'category' => $product->category ? ['name' => $product->category->name] : null,
+                ])
+                ->all(),
         ]);
     }
 
@@ -77,16 +119,34 @@ class ProductController extends Controller
 
     private function cartItems(): array
     {
-        if (! auth()->check()) {
+        $user = Auth::user();
+
+        if (! ($user instanceof User)) {
             return [];
         }
 
-        return auth()->user()->cartItems()
+        return $user->cartItems()
             ->get(['id', 'sub_product_id', 'quantity'])
             ->mapWithKeys(function ($item) {
                 return [$item->sub_product_id => ['quantity' => $item->quantity, 'cart_item_id' => $item->id]];
             })
             ->toArray();
+    }
+
+    private function normalizedSearch(): string
+    {
+        return mb_substr(trim((string) request()->query('search', '')), 0, 100);
+    }
+
+    /**
+     * @param Builder<Product> $query
+     */
+    private function applySearch(Builder $query, string $search): void
+    {
+        $query->where(function (Builder $query) use ($search): void {
+            $query->where('title', 'like', "%{$search}%")
+                ->orWhereHas('category', fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', "%{$search}%"));
+        });
     }
 
     /**

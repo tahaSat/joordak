@@ -23,13 +23,16 @@ use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\ZibalPaymentController;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\User;
 use App\Support\AboutUsSeo;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', WelcomeController::class)->name('landing');
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/products/search/suggestions', [ProductController::class, 'suggestions'])->name('products.search.suggestions');
 Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/about-us', [AboutUsController::class, 'show'])->name('about-us');
@@ -116,7 +119,12 @@ Route::prefix('admin')
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
-        $invoices = auth()->user()->invoices()->with(['items', 'latestPayment'])->latest()->get();
+        $user = Auth::user();
+        if (! ($user instanceof User)) {
+            abort(403);
+        }
+
+        $invoices = $user->invoices()->with(['items', 'latestPayment'])->latest()->get();
 
         return Inertia::render('Dashboard', [
             'invoices' => $invoices,
